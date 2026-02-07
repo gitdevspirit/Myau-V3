@@ -1,14 +1,10 @@
 [
   {
-<<<<<<< HEAD
-    "name": "Myau",
-=======
     "name": "Myau+",
->>>>>>> 1fe985b (v1.0)
     "version": "${version}",
     "mcversion": "1.8.9",
     "authorList": [
-      "ksyz"
+      "nespola001"
     ]
   }
 ]

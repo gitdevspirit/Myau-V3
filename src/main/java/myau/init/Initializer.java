@@ -2,6 +2,6 @@ package myau.init;
 
 public class Initializer {
     public Initializer() {
-        System.out.println("Meow!");
+        System.out.println("OpenMyau+ BUILD BY NESPOLA |Btw U got Ratted (trolled)!");
     }
 }
