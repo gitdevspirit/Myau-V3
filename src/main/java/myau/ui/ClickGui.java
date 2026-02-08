@@ -46,6 +46,7 @@ public class ClickGui extends GuiScreen {
         combatModules.add(Myau.moduleManager.getModule(BackTrack.class));
         combatModules.add(Myau.moduleManager.getModule(TimerRangev999.class));
         combatModules.add(Myau.moduleManager.getModule(ClickAssits.class));
+        combatModules.add(Myau.moduleManager.getModule(Criticals.class));
 
         List<Module> movementModules = new ArrayList<>();
         movementModules.add(Myau.moduleManager.getModule(AntiAFK.class));
