@@ -14,16 +14,12 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemSword;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
-/**
- * AutoBlock - Automatically blocks (right-click hold) when an enemy is close and swinging.
- */
 public class Autoblock extends Module {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
 
-    public final PercentProperty range = new PercentProperty("Range", 45); // 0–100 → 0–10 blocks
+    public final PercentProperty range = new PercentProperty("Range", 45);
     public final IntProperty maxHurtTime = new IntProperty("Max Hurt Time", 8, 0, 10);
     public final IntProperty maxHoldDuration = new IntProperty("Max Hold Ticks", 5, 1, 20);
     public final IntProperty maxLagDuration = new IntProperty("Lag Comp Ticks", 3, 0, 10);
@@ -54,8 +50,8 @@ public class Autoblock extends Module {
         }
 
         double distance = mc.thePlayer.getDistanceToEntity(target);
+        float realRange = range.getValue().floatValue() / 10f;
 
-        float realRange = range.getValue().floatValue() / 10f; // 0–100 → 0–10 blocks
         if (distance > realRange) {
             stopBlocking();
             return;
@@ -91,7 +87,6 @@ public class Autoblock extends Module {
 
     private EntityLivingBase getClosestEnemy() {
         List<Entity> entities = mc.theWorld.loadedEntityList;
-
         return entities.stream()
                 .filter(e -> e instanceof EntityLivingBase
                         && e != mc.thePlayer
