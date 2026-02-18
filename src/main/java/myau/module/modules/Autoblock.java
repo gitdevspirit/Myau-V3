@@ -12,27 +12,25 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemSword;
-import net.minecraft.network.play.client.CPacketEntityAction;
+import net.minecraft.network.play.client.C0BPacketEntityAction;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * AutoBlock - Packet-based sword blocking for 1.8.9.
- * Uses START/STOP_SNEAKING packets → allows KillAura to keep attacking simultaneously.
+ * Uses START/STOP_SNEAKING packets to allow KillAura to keep attacking.
  */
 public class Autoblock extends Module {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
 
-    // ── Properties (toggles & sliders) ──────────────────────────────────────────
     public final PercentProperty range = new PercentProperty("Range", 45); // 0–100 → 0–10 blocks
     public final IntProperty maxHurtTime = new IntProperty("Max Hurt Time", 8, 0, 10);
     public final IntProperty maxHoldDuration = new IntProperty("Max Hold Ticks", 5, 1, 20);
     public final IntProperty maxLagDuration = new IntProperty("Lag Comp Ticks", 3, 0, 10);
     public final BooleanProperty onlySword = new BooleanProperty("Only Sword", true);
     public final BooleanProperty onlyWhenSwinging = new BooleanProperty("Only Swinging", true);
-    public final BooleanProperty alwaysBlock = new BooleanProperty("Always Block", false); // NEW: ignore swinging check
 
     private int blockTicks = 0;
     private boolean isBlocking = false;
@@ -72,25 +70,21 @@ public class Autoblock extends Module {
             return;
         }
 
-        // Only block if enemy is swinging (unless "Always Block" is on)
-        if (!alwaysBlock.getValue() && onlyWhenSwinging.getValue() && target.swingProgressInt <= 0) {
+        if (onlyWhenSwinging.getValue() && target.swingProgressInt <= 0) {
             stopBlocking();
             return;
         }
 
-        // Don't block if we just got hit (anti-combo break)
         if (mc.thePlayer.hurtTime > maxHurtTime.getValue()) {
             stopBlocking();
             return;
         }
 
-        // Start/continue blocking
         if (blockTicks < maxHoldDuration.getValue()) {
             startBlocking();
             blockTicks++;
         }
 
-        // Lag compensation: keep blocking briefly after target leaves range
         if (blockTicks > 0 && distance > realRange + 0.5) {
             blockTicks--;
             if (blockTicks > 0) {
@@ -119,9 +113,8 @@ public class Autoblock extends Module {
 
     private void startBlocking() {
         if (!isBlocking) {
-            // Packet: START_SNEAKING → activates sword block on server
             mc.thePlayer.sendQueue.addToSendQueue(
-                new CPacketEntityAction(mc.thePlayer, CPacketEntityAction.Action.START_SNEAKING)
+                new C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.START_SNEAKING)
             );
             isBlocking = true;
         }
@@ -129,16 +122,14 @@ public class Autoblock extends Module {
 
     private void stopBlocking() {
         if (isBlocking) {
-            // Packet: STOP_SNEAKING → releases block
             mc.thePlayer.sendQueue.addToSendQueue(
-                new CPacketEntityAction(mc.thePlayer, CPacketEntityAction.Action.STOP_SNEAKING)
+                new C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.STOP_SNEAKING)
             );
             isBlocking = false;
             blockTicks = 0;
         }
     }
 
-    @Override
     public void onDisable() {
         stopBlocking();
         blockTicks = 0;
