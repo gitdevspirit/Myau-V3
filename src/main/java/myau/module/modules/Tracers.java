@@ -11,7 +11,7 @@ import myau.util.RenderUtil;
 import myau.util.RotationUtil;
 import myau.util.TeamUtil;
 import myau.property.properties.BooleanProperty;
-// import myau.property.properties.PercentProperty;
+import myau.property.properties.PercentProperty;
 import myau.property.properties.ModeProperty;
 // import myau.property.properties.SliderProperty;
 import net.minecraft.client.Minecraft;
@@ -39,6 +39,7 @@ public class Tracers extends Module {
     public final BooleanProperty drawLines       = new BooleanProperty("lines",           true);
     public final BooleanProperty drawArrows      = new BooleanProperty("arrows",          false);
     public final PercentProperty opacity         = new PercentProperty("opacity",         100);
+    public final PercentProperty arrowRadius     = new PercentProperty("radius",          50);
     public final BooleanProperty showPlayers     = new BooleanProperty("players",         true);
     public final BooleanProperty showFriends     = new BooleanProperty("friends",         true);
     public final BooleanProperty showEnemies     = new BooleanProperty("enemies",         true);
@@ -277,9 +278,11 @@ public class Tracers extends Module {
             float blue  = color.getBlue()  / 255.0F;
             float alpha = color.getAlpha() / 255.0F;
 
+// Arrow radius scaling (PercentProperty returns value 0–100)
             float percent = arrowRadius.getValue().floatValue();  // 0.0 to 100.0
-            float r = 30.0f + (percent / 100.0f) * 170.0f;       // 0% → 30, 100% → 200
-            float rotation = (float)(Math.atan2(arrowDirY, arrowDirX) * (180.0 / Math.PI) + 90.0);
+            float r = 30.0f + (percent / 100.0f) * 170.0f;        // maps → 30 to 200
+// Calculate rotation angle in degrees (pointing toward the target)
+            float rotation = (float) (Math.atan2(arrowDirY, arrowDirX) * (180.0 / Math.PI) + 90.0);
 
             GlStateManager.pushMatrix();
             GlStateManager.translate(r * arrowDirX + 1.0F, r * arrowDirY + 1.0F, 0.0F);
