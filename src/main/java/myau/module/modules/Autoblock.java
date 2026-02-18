@@ -4,30 +4,25 @@ import myau.event.EventTarget;
 import myau.events.TickEvent;
 import myau.module.Module;
 import myau.property.properties.BooleanProperty;
-import myau.property.properties.IntProperty;
 import myau.property.properties.PercentProperty;
+import myau.property.properties.IntProperty;
 import myau.util.TeamUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemSword;
-import net.minecraft.util.MathHelper;
-import org.lwjgl.input.Keyboard;
-
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * AutoBlock - Automatically blocks (right-click hold) when an enemy is close and swinging.
- * Classic 1.8.9 style with range, timing, and lag compensation.
  */
 public class Autoblock extends Module {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
 
-    // ── Properties ───────────────────────────────────────────────────────────────
     public final PercentProperty range = new PercentProperty("Range", 45); // 0–100 → 0–10 blocks
     public final IntProperty maxHurtTime = new IntProperty("Max Hurt Time", 8, 0, 10);
     public final IntProperty maxHoldDuration = new IntProperty("Max Hold Ticks", 5, 1, 20);
@@ -35,29 +30,24 @@ public class Autoblock extends Module {
     public final BooleanProperty onlySword = new BooleanProperty("Only Sword", true);
     public final BooleanProperty onlyWhenSwinging = new BooleanProperty("Only Swinging", true);
 
-    // ── Internal state ───────────────────────────────────────────────────────────
     private int blockTicks = 0;
     private boolean isBlocking = false;
 
     public Autoblock() {
         super("Autoblock", false);
-        setKeybind(Keyboard.KEY_NONE); // optional toggle key
     }
 
     @EventTarget
     public void onTick(TickEvent event) {
-        if (event.getType() != TickEvent.Type.PRE) return;
+        if (!isEnabled()) return;
         if (mc.thePlayer == null || !mc.thePlayer.onGround) return;
 
-        // Reset if disabled or no sword
-        if (!isEnabled() || (onlySword.getValue() && !isHoldingSword())) {
+        if (onlySword.getValue() && !isHoldingSword()) {
             stopBlocking();
             return;
         }
 
-        // Find closest valid target
         EntityLivingBase target = getClosestEnemy();
-
         if (target == null) {
             stopBlocking();
             return;
@@ -65,32 +55,27 @@ public class Autoblock extends Module {
 
         double distance = mc.thePlayer.getDistanceToEntity(target);
 
-        // Range check (0–100 → 0–10 blocks)
-        float realRange = range.getValue().floatValue() / 10f;
+        float realRange = range.getValue().floatValue() / 10f; // 0–100 → 0–10 blocks
         if (distance > realRange) {
             stopBlocking();
             return;
         }
 
-        // Only block if enemy is swinging arm
         if (onlyWhenSwinging.getValue() && target.swingProgressInt <= 0) {
             stopBlocking();
             return;
         }
 
-        // Hurt time check (don't block if we just got hit)
         if (mc.thePlayer.hurtTime > maxHurtTime.getValue()) {
             stopBlocking();
             return;
         }
 
-        // Start / continue blocking
         if (blockTicks < maxHoldDuration.getValue()) {
             startBlocking();
             blockTicks++;
         }
 
-        // Lag compensation: keep blocking after target leaves range
         if (blockTicks > 0 && distance > realRange + 0.5) {
             blockTicks--;
             if (blockTicks > 0) {
