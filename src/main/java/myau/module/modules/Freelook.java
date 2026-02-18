@@ -138,3 +138,4 @@ public class Freelook extends Module {
     public String[] getSuffix() {
         if (!isActive) return new String[0];
         return new String[]{ mode.getValue() == 
+                           }
