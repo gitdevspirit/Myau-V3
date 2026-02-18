@@ -37,7 +37,8 @@ jobs:
         uses: gradle/actions/setup-gradle@v4.0.0
 
       - name: Build with Gradle Wrapper
-        run: ./gradlew build
+        run: ./gradlew build --stacktrace --info   # ← Add these flags
+    # Or even more verbose: ./gradlew build --stacktrace --info --scan
 
   dependency-submission:
     runs-on: ubuntu-latest
