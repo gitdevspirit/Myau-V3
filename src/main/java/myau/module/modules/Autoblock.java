@@ -12,15 +12,14 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemSword;
-import net.minecraft.network.play.client.CPacketPlayerTryUseItem;
-import net.minecraft.util.EnumHand;
+import net.minecraft.network.play.client.CPacketEntityAction;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * AutoBlock - Auto right-click blocks while allowing KillAura to continue attacking.
- * Uses packet blocking to avoid canceling left-clicks.
+ * AutoBlock - Packet-based blocking that allows KillAura to keep attacking.
+ * Uses START/STOP_SNEAKING packets for 1.8.9 compatibility.
  */
 public class Autoblock extends Module {
 
@@ -32,7 +31,6 @@ public class Autoblock extends Module {
     public final IntProperty maxLagDuration = new IntProperty("Lag Comp Ticks", 3, 0, 10);
     public final BooleanProperty onlySword = new BooleanProperty("Only Sword", true);
     public final BooleanProperty onlyWhenSwinging = new BooleanProperty("Only Swinging", true);
-    public final BooleanProperty allowAttacks = new BooleanProperty("Allow Attacks", true); // NEW: keep KillAura hitting
 
     private int blockTicks = 0;
     private boolean isBlocking = false;
@@ -82,7 +80,7 @@ public class Autoblock extends Module {
             return;
         }
 
-        // Start/continue blocking
+        // Packet block: keep sending START_SNEAKING to maintain block state
         if (blockTicks < maxHoldDuration.getValue()) {
             startBlocking();
             blockTicks++;
@@ -116,16 +114,21 @@ public class Autoblock extends Module {
     }
 
     private void startBlocking() {
-        if (!isBlocking && mc.thePlayer.getCurrentEquippedItem() != null) {
-            // Use packet for blocking — doesn't cancel attacks as much
-            mc.thePlayer.sendQueue.addToSendQueue(new CPacketPlayerTryUseItem(EnumHand.MAIN_HAND));
+        if (!isBlocking) {
+            // Send START_SNEAKING packet (1.8.9 block method)
+            mc.thePlayer.sendQueue.addToSendQueue(
+                new CPacketEntityAction(mc.thePlayer, CPacketEntityAction.Action.START_SNEAKING)
+            );
             isBlocking = true;
         }
     }
 
     private void stopBlocking() {
         if (isBlocking) {
-            mc.thePlayer.stopUsingItem();
+            // Send STOP_SNEAKING packet
+            mc.thePlayer.sendQueue.addToSendQueue(
+                new CPacketEntityAction(mc.thePlayer, CPacketEntityAction.Action.STOP_SNEAKING)
+            );
             isBlocking = false;
             blockTicks = 0;
         }
