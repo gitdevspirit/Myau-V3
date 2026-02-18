@@ -12,19 +12,27 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemSword;
+import net.minecraft.network.play.client.CPacketPlayerTryUseItem;
+import net.minecraft.util.EnumHand;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
+/**
+ * AutoBlock - Auto right-click blocks while allowing KillAura to continue attacking.
+ * Uses packet blocking to avoid canceling left-clicks.
+ */
 public class Autoblock extends Module {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
 
-    public final PercentProperty range = new PercentProperty("Range", 45);
+    public final PercentProperty range = new PercentProperty("Range", 45); // 0–100 → 0–10 blocks
     public final IntProperty maxHurtTime = new IntProperty("Max Hurt Time", 8, 0, 10);
     public final IntProperty maxHoldDuration = new IntProperty("Max Hold Ticks", 5, 1, 20);
     public final IntProperty maxLagDuration = new IntProperty("Lag Comp Ticks", 3, 0, 10);
     public final BooleanProperty onlySword = new BooleanProperty("Only Sword", true);
     public final BooleanProperty onlyWhenSwinging = new BooleanProperty("Only Swinging", true);
+    public final BooleanProperty allowAttacks = new BooleanProperty("Allow Attacks", true); // NEW: keep KillAura hitting
 
     private int blockTicks = 0;
     private boolean isBlocking = false;
@@ -35,8 +43,15 @@ public class Autoblock extends Module {
 
     @EventTarget
     public void onTick(TickEvent event) {
-        if (!isEnabled()) return;
-        if (mc.thePlayer == null || !mc.thePlayer.onGround) return;
+        if (!isEnabled()) {
+            stopBlocking();
+            return;
+        }
+
+        if (mc.thePlayer == null || !mc.thePlayer.onGround) {
+            stopBlocking();
+            return;
+        }
 
         if (onlySword.getValue() && !isHoldingSword()) {
             stopBlocking();
@@ -67,11 +82,13 @@ public class Autoblock extends Module {
             return;
         }
 
+        // Start/continue blocking
         if (blockTicks < maxHoldDuration.getValue()) {
             startBlocking();
             blockTicks++;
         }
 
+        // Lag compensation
         if (blockTicks > 0 && distance > realRange + 0.5) {
             blockTicks--;
             if (blockTicks > 0) {
@@ -87,6 +104,7 @@ public class Autoblock extends Module {
 
     private EntityLivingBase getClosestEnemy() {
         List<Entity> entities = mc.theWorld.loadedEntityList;
+
         return entities.stream()
                 .filter(e -> e instanceof EntityLivingBase
                         && e != mc.thePlayer
@@ -99,11 +117,8 @@ public class Autoblock extends Module {
 
     private void startBlocking() {
         if (!isBlocking && mc.thePlayer.getCurrentEquippedItem() != null) {
-            mc.playerController.sendUseItem(
-                mc.thePlayer,
-                mc.theWorld,
-                mc.thePlayer.getCurrentEquippedItem()
-            );
+            // Use packet for blocking — doesn't cancel attacks as much
+            mc.thePlayer.sendQueue.addToSendQueue(new CPacketPlayerTryUseItem(EnumHand.MAIN_HAND));
             isBlocking = true;
         }
     }
@@ -117,8 +132,13 @@ public class Autoblock extends Module {
     }
 
     @Override
-    public void onDisabled() {
+    public void onDisable() {
         stopBlocking();
         blockTicks = 0;
+    }
+
+    @Override
+    public String[] getSuffix() {
+        return isBlocking ? new String[]{"BLOCKING"} : new String[0];
     }
 }
