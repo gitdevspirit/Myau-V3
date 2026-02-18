@@ -29,6 +29,8 @@ public class Freelook extends Module {
     private float realYaw;
     private float realPitch;
 
+    private int previousPerspective = 0;
+
     public Freelook() {
         super("Freelook", true);
     }
@@ -51,14 +53,19 @@ public class Freelook extends Module {
             }
         }
 
-        // When activated, store real rotation once
+        // When activated
         if (isActive && mc.currentScreen == null) {
+
+            // First tick of activation
             if (!wasPressed) {
                 realYaw = mc.thePlayer.rotationYaw;
                 realPitch = mc.thePlayer.rotationPitch;
 
                 cameraYaw = realYaw;
                 cameraPitch = realPitch;
+
+                previousPerspective = mc.gameSettings.thirdPersonView;
+                mc.gameSettings.thirdPersonView = 1; // third-person freelook
             }
 
             // Mouse movement
@@ -67,4 +74,53 @@ public class Freelook extends Module {
 
             float sens = sensitivity.getValue().floatValue() / 100f;
 
-            camera
+            cameraYaw += dx * 0.15f * sens;
+            cameraPitch -= dy * 0.15f * sens;
+            cameraPitch = Math.max(-90, Math.min(90, cameraPitch));
+
+            // Freeze real rotation
+            mc.thePlayer.rotationYaw = realYaw;
+            mc.thePlayer.rotationPitch = realPitch;
+
+        } else if (!isActive) {
+
+            // Smooth return
+            if (smoothReturn.getValue()) {
+                float speed = returnSpeed.getValue().floatValue() / 100f * 0.25f;
+
+                cameraYaw += (realYaw - cameraYaw) * speed;
+                cameraPitch += (realPitch - cameraPitch) * speed;
+            } else {
+                cameraYaw = realYaw;
+                cameraPitch = realPitch;
+            }
+
+            // Restore perspective
+            mc.gameSettings.thirdPersonView = previousPerspective;
+        }
+    }
+
+    @EventTarget
+    public void onRender3D(Render3DEvent event) {
+        if (!isEnabled()) return;
+
+        if (isActive) {
+            mc.thePlayer.rotationYawHead = cameraYaw;
+            mc.thePlayer.renderYawOffset = cameraYaw;
+        }
+    }
+
+    @Override
+    public void onDisabled() {
+        isActive = false;
+        wasPressed = false;
+
+        mc.gameSettings.thirdPersonView = previousPerspective;
+    }
+
+    @Override
+    public String[] getSuffix() {
+        if (!isActive) return new String[0];
+        return new String[]{ mode.getValue() == 0 ? "HOLD" : "ON" };
+    }
+}
