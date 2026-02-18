@@ -33,36 +33,24 @@ public class Freelook extends Module {
         super("Freelook", true);
     }
 
-    @Override
-    public void onEnable() {
-        resetOffsets();
-    }
-
-    @Override
-    public void onDisable() {
-        resetOffsets();
-        isActive = false;
-    }
-
-    private void resetOffsets() {
-        currentYawOffset = 0.0f;
-        currentPitchOffset = 0.0f;
-        targetYawOffset = 0.0f;
-        targetPitchOffset = 0.0f;
-    }
-
     @EventTarget
     public void onTick(TickEvent event) {
-        if (event.getType() != TickEvent.Type.PRE) return;
-
+        // No Type.PRE — assume all ticks are pre (common in simple clients)
+        // Activation logic
         if (mode.getValue() == 0) { // Hold
-            isActive = isKeybindDown();
+            isActive = Keyboard.isKeyDown(Keyboard.KEY_F); // direct key check (no setKeybind)
         } else { // Toggle
-            if (isKeyPressedThisTick()) {
-                isActive = !isActive;
+            if (Keyboard.isKeyDown(Keyboard.KEY_F)) { // simple press detection
+                if (!wasPressed) {
+                    isActive = !isActive;
+                    wasPressed = true;
+                }
+            } else {
+                wasPressed = false;
             }
         }
 
+        // Smooth return
         if (!isActive && smoothReturn.getValue()) {
             targetYawOffset = 0.0f;
             targetPitchOffset = 0.0f;
@@ -75,6 +63,7 @@ public class Freelook extends Module {
             if (Math.abs(currentPitchOffset) < 0.05f) currentPitchOffset = 0.0f;
         }
 
+        // Poll mouse when active
         if (isActive && mc.currentScreen == null) {
             int dx = Mouse.getDX();
             int dy = Mouse.getDY();
@@ -96,6 +85,8 @@ public class Freelook extends Module {
     public void onRender3D(Render3DEvent event) {
         if (!isActive) return;
 
+        // Apply camera offsets (use renderYawOffset instead of head fields)
+        mc.thePlayer.renderYawOffset = mc.thePlayer.rotationYaw + currentYawOffset;
         mc.thePlayer.rotationYawHead = mc.thePlayer.rotationYaw + currentYawOffset;
         mc.thePlayer.rotationPitchHead = mc.thePlayer.rotationPitch + currentPitchOffset;
 
@@ -108,13 +99,7 @@ public class Freelook extends Module {
         return a + (b - a) * t;
     }
 
-    private boolean isKeyPressedThisTick() {
-        return getKeybind().isPressed();
-    }
-
-    private boolean isKeybindDown() {
-        return getKeybind().isKeyDown();
-    }
+    private boolean wasPressed = false;
 
     @Override
     public String[] getSuffix() {
