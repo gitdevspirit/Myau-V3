@@ -23,10 +23,11 @@ public class Freelook extends Module {
     private boolean isActive = false;
     private boolean wasPressed = false;
 
-    private float currentYawOffset   = 0.0f;
-    private float currentPitchOffset = 0.0f;
-    private float targetYawOffset    = 0.0f;
-    private float targetPitchOffset  = 0.0f;
+    private float cameraYaw;
+    private float cameraPitch;
+
+    private float realYaw;
+    private float realPitch;
 
     public Freelook() {
         super("Freelook", true);
@@ -36,13 +37,13 @@ public class Freelook extends Module {
     public void onTick(TickEvent event) {
         if (!isEnabled()) return;
 
-        // Activation
+        // Activation logic
         if (mode.getValue() == 0) {
             isActive = Keyboard.isKeyDown(Keyboard.KEY_F);
         } else {
             if (Keyboard.isKeyDown(Keyboard.KEY_F)) {
                 if (!wasPressed) {
-                    isActive   = !isActive;
+                    isActive = !isActive;
                     wasPressed = true;
                 }
             } else {
@@ -50,63 +51,20 @@ public class Freelook extends Module {
             }
         }
 
-        // Smooth return when inactive
-        if (!isActive && smoothReturn.getValue()) {
-            targetYawOffset   = 0.0f;
-            targetPitchOffset = 0.0f;
-            float speed = returnSpeed.getValue().floatValue() / 100f * 0.25f;
-            currentYawOffset   += (targetYawOffset   - currentYawOffset)   * speed;
-            currentPitchOffset += (targetPitchOffset - currentPitchOffset) * speed;
-            if (Math.abs(currentYawOffset)   < 0.05f) currentYawOffset   = 0.0f;
-            if (Math.abs(currentPitchOffset) < 0.05f) currentPitchOffset = 0.0f;
-        }
-
-        // Poll mouse when active
+        // When activated, store real rotation once
         if (isActive && mc.currentScreen == null) {
+            if (!wasPressed) {
+                realYaw = mc.thePlayer.rotationYaw;
+                realPitch = mc.thePlayer.rotationPitch;
+
+                cameraYaw = realYaw;
+                cameraPitch = realPitch;
+            }
+
+            // Mouse movement
             int dx = Mouse.getDX();
             int dy = Mouse.getDY();
-            if (dx != 0 || dy != 0) {
-                float sensMult   = sensitivity.getValue().floatValue() / 100f;
-                float yawDelta   =  dx * 0.15f * sensMult;
-                float pitchDelta =  dy * 0.15f * sensMult * -1f;
-                targetYawOffset   += yawDelta;
-                targetPitchOffset += pitchDelta;
-                targetPitchOffset  = Math.max(-90.0f, Math.min(90.0f, targetPitchOffset));
-            }
-        }
-    }
 
-    @EventTarget
-    public void onRender3D(Render3DEvent event) {
-        if (!isEnabled()) return;
-        if (!isActive && currentYawOffset == 0.0f && currentPitchOffset == 0.0f) return;
+            float sens = sensitivity.getValue().floatValue() / 100f;
 
-        // rotationPitchHead does not exist in 1.8.9 MCP mappings — yaw offset only
-        mc.thePlayer.renderYawOffset = mc.thePlayer.rotationYaw + currentYawOffset;
-        mc.thePlayer.rotationYawHead = mc.thePlayer.rotationYaw + currentYawOffset;
-
-        float lerpFactor   = 0.85f;
-        currentYawOffset   = lerp(currentYawOffset,   targetYawOffset,   lerpFactor);
-        currentPitchOffset = lerp(currentPitchOffset, targetPitchOffset, lerpFactor);
-    }
-
-    private float lerp(float a, float b, float t) {
-        return a + (b - a) * t;
-    }
-
-    @Override
-    public void onDisabled() {
-        isActive           = false;
-        wasPressed         = false;
-        currentYawOffset   = 0.0f;
-        currentPitchOffset = 0.0f;
-        targetYawOffset    = 0.0f;
-        targetPitchOffset  = 0.0f;
-    }
-
-    @Override
-    public String[] getSuffix() {
-        if (!isActive) return new String[0];
-        return new String[]{ mode.getValue() == 0 ? "HOLD" : "ON" };
-    }
-}
+            camera
