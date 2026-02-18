@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
  *
  * 
  */
-public class AutoBlock extends Module {
+public class Autoblock extends Module {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
 
