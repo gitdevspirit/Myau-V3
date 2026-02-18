@@ -237,11 +237,9 @@ public class Tracers extends Module {
             float blue  = color.getBlue()  / 255.0f;
             float alpha = color.getAlpha() / 255.0f;
 
-            // Radius (scaled from percent 0–100 → 30–200 px)
             float percent = arrowRadius.getValue().floatValue();
             float r = 30.0f + (percent / 100.0f) * 170.0f;
 
-            // Rotation (tip points toward target)
             float rotation = (float) (Math.atan2(arrowDirY, arrowDirX) * (180.0 / Math.PI) + 90.0);
 
             GlStateManager.pushMatrix();
@@ -281,81 +279,50 @@ public class Tracers extends Module {
                     RenderUtil.drawTriangle(0.0F, 0.0F, 0.0F, 10.0F, rgb);
                     break;
 
-                case 3: // Slinky — solid wide filled arrow (matches screenshot style)
-    final float halfWidth = 15.0F;   // total base ~30 px — very wide like Slinky
-    final float height    = 7.5F;    // short & chunky — not tall
-    final float tipInset  = 2.0F;    // inward curve for soft tip
+                case 3: // Slinky — wide solid filled arrow (refined)
+                    final float halfWidth = 15.0F;   // total base ~30 px — very wide
+                    final float height    = 7.5F;    // short & chunky
+                    final float tipInset  = 2.0F;    // soft tip curve
 
-    GL11.glEnable(GL11.GL_BLEND);
-    GL11.glDisable(GL11.GL_TEXTURE_2D);
-    GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+                    GL11.glEnable(GL11.GL_BLEND);
+                    GL11.glDisable(GL11.GL_TEXTURE_2D);
+                    GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
-    // Solid main fill (bright color)
-    GL11.glColor4f(red, green, blue, alpha);
-    GL11.glBegin(GL11.GL_TRIANGLES);
-    // Tip (center)
-    GL11.glVertex2f(0.0F, -height);
-    // Base left
-    GL11.glVertex2f(-halfWidth, 0.0F);
-    // Base right
-    GL11.glVertex2f(halfWidth, 0.0F);
-    GL11.glEnd();
+                    // Solid main fill
+                    GL11.glColor4f(red, green, blue, alpha);
+                    GL11.glBegin(GL11.GL_TRIANGLES);
+                    GL11.glVertex2f(0.0F, -height);
+                    GL11.glVertex2f(-halfWidth, 0.0F);
+                    GL11.glVertex2f(halfWidth, 0.0F);
+                    GL11.glEnd();
 
-    // Subtle highlight near tip (faint shine, common in Slinky-style)
-    float highlight = 0.18F;
-    GL11.glColor4f(
-        Math.min(1.0f, red   + highlight),
-        Math.min(1.0f, green + highlight),
-        Math.min(1.0f, blue  + highlight),
-        alpha * 0.7f
-    );
-    GL11.glBegin(GL11.GL_TRIANGLES);
-    GL11.glVertex2f(0.0F, -height + tipInset);         // raised tip
-    GL11.glVertex2f(-halfWidth * 0.6F, -1.0F);         // left highlight
-    GL11.glVertex2f( halfWidth * 0.6F, -1.0F);         // right highlight
-    GL11.glEnd();
+                    // Subtle highlight near tip
+                    float tipHighlight = 0.18F;
+                    GL11.glColor4f(
+                        Math.min(1.0f, red   + tipHighlight),
+                        Math.min(1.0f, green + tipHighlight),
+                        Math.min(1.0f, blue  + tipHighlight),
+                        alpha * 0.7f
+                    );
+                    GL11.glBegin(GL11.GL_TRIANGLES);
+                    GL11.glVertex2f(0.0F, -height + tipInset);
+                    GL11.glVertex2f(-halfWidth * 0.6F, -1.0F);
+                    GL11.glVertex2f( halfWidth * 0.6F, -1.0F);
+                    GL11.glEnd();
 
-    // Thin dark outline (crisp contrast, Slinky signature)
-    float darken = 0.28F;  // darker for better pop
-    GL11.glColor4f(red * darken, green * darken, blue * darken, alpha);
-    GL11.glLineWidth(1.6F);
-    GL11.glBegin(GL11.GL_LINE_LOOP);
-    GL11.glVertex2f(0.0F, -height);
-    GL11.glVertex2f(-halfWidth, 0.0F);
-    GL11.glVertex2f(halfWidth, 0.0F);
-    GL11.glEnd();
+                    // Thin dark outline
+                    float outlineDarken = 0.28F;
+                    GL11.glColor4f(red * outlineDarken, green * outlineDarken, blue * outlineDarken, alpha);
+                    GL11.glLineWidth(1.6F);
+                    GL11.glBegin(GL11.GL_LINE_LOOP);
+                    GL11.glVertex2f(0.0F, -height);
+                    GL11.glVertex2f(-halfWidth, 0.0F);
+                    GL11.glVertex2f(halfWidth, 0.0F);
+                    GL11.glEnd();
 
-    GL11.glEnable(GL11.GL_TEXTURE_2D);
-    GL11.glDisable(GL11.GL_BLEND);
-    break;
-    // Optional: very subtle inner gradient / highlight (Slinky sometimes has faint shine)
-    // You can skip this if you want pure solid
-    float highlight = 0.15F;
-    GL11.glColor4f(
-        Math.min(1.0f, red   + highlight),
-        Math.min(1.0f, green + highlight),
-        Math.min(1.0f, blue  + highlight),
-        alpha * 0.6f
-    );
-    GL11.glBegin(GL11.GL_TRIANGLES);
-    GL11.glVertex2f(0.0F, -height + tipInset);           // raised tip
-    GL11.glVertex2f(-halfWidth * 0.7F, -2.0F);           // left highlight
-    GL11.glVertex2f( halfWidth * 0.7F, -2.0F);           // right highlight
-    GL11.glEnd();
-
-    // Thin dark outline (crisp Slinky contrast)
-    float darken = 0.35F;  // darker than before for better pop
-    GL11.glColor4f(red * darken, green * darken, blue * darken, alpha);
-    GL11.glLineWidth(1.4F);
-    GL11.glBegin(GL11.GL_LINE_LOOP);
-    GL11.glVertex2f(0.0F, -height);
-    GL11.glVertex2f(-halfWidth, 0.0F);
-    GL11.glVertex2f(halfWidth, 0.0F);
-    GL11.glEnd();
-
-    GL11.glEnable(GL11.GL_TEXTURE_2D);
-    GL11.glDisable(GL11.GL_BLEND);
-    break;
+                    GL11.glEnable(GL11.GL_TEXTURE_2D);
+                    GL11.glDisable(GL11.GL_BLEND);
+                    break;
             }
 
             RenderUtil.disableRenderState();
