@@ -39,31 +39,24 @@ public class Velocity extends Module {
     public void onKnockback(KnockbackEvent event) {
         if (!this.isEnabled()) return;
 
-        // Cancel if explosion knockback is pending
         if (this.pendingExplosion) {
             event.setCancelled(true);
             this.pendingExplosion = false;
             return;
         }
 
-        // Cancel if player is in liquid or web
         if (this.fakeCheck.getValue() && this.isInLiquidOrWeb()) {
             event.setCancelled(true);
             return;
         }
 
-        // Delay knockback if autoblock or killaura conditions require it
         if (this.canDelay()) {
             event.setCancelled(true);
             return;
         }
 
-        // Debug logging
         if (this.debugLog.getValue()) {
-            System.out.println("[Velocity] Knockback event: "
-                    + "motionX=" + event.getMotionX()
-                    + ", motionY=" + event.getMotionY()
-                    + ", motionZ=" + event.getMotionZ());
+            System.out.println("[Velocity] Knockback event triggered.");
         }
     }
 }
