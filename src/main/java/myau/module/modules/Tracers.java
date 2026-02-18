@@ -13,14 +13,16 @@ import myau.util.TeamUtil;
 import myau.property.properties.BooleanProperty;
 import myau.property.properties.PercentProperty;
 import myau.property.properties.ModeProperty;
+import myau.property.properties.SliderProperty;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.Vec3;
+import org.lwjgl.opengl.GL11;
 
-import java.awt.*;
+import java.awt.Color;
 import java.util.stream.Collectors;
 
 public class Tracers extends Module {
@@ -33,22 +35,40 @@ public class Tracers extends Module {
     public final BooleanProperty showFriends = new BooleanProperty("friends", true);
     public final BooleanProperty showEnemies = new BooleanProperty("enemies", true);
     public final BooleanProperty showBots = new BooleanProperty("bots", false);
+    public final SliderProperty arrowRadius = new SliderProperty("radius", 50.0, 30.0, 200.0, 5.0);
+    public final ModeProperty arrowMode = new ModeProperty("arrow", 2, new String[]{"Caret", "Greater than", "Triangle"});
+    public final BooleanProperty showDistance = new BooleanProperty("distance", true);
+    public final BooleanProperty hideTeammates = new BooleanProperty("hide teammates", true);
+    public final BooleanProperty enemiesOnly = new BooleanProperty("enemies only", false);
+    public final BooleanProperty renderOnlyOffScreen = new BooleanProperty("only offscreen", false);
+    public final BooleanProperty renderInGUIs = new BooleanProperty("in GUIs", false);
 
     private boolean shouldRender(EntityPlayer entityPlayer) {
         if (entityPlayer.deathTime > 0) {
             return false;
         } else if (mc.getRenderViewEntity().getDistanceToEntity(entityPlayer) > 512.0F) {
             return false;
-        } else if (entityPlayer != mc.thePlayer && entityPlayer != mc.getRenderViewEntity()) {
-            if (TeamUtil.isBot(entityPlayer)) {
-                return this.showBots.getValue();
-            } else if (TeamUtil.isFriend(entityPlayer)) {
-                return this.showFriends.getValue();
-            } else {
-                return TeamUtil.isTarget(entityPlayer) ? this.showEnemies.getValue() : this.showPlayers.getValue();
-            }
-        } else {
+        } else if (entityPlayer == mc.thePlayer || entityPlayer == mc.getRenderViewEntity()) {
             return false;
+        } else {
+            if (TeamUtil.isBot(entityPlayer)) {
+                if (!this.showBots.getValue()) return false;
+            }
+            if (TeamUtil.isSameTeam(entityPlayer) && this.hideTeammates.getValue()) {
+                return false;
+            }
+            if (TeamUtil.isFriend(entityPlayer)) {
+                if (!this.showFriends.getValue()) return false;
+            }
+            if (TeamUtil.isTarget(entityPlayer)) {
+                if (!this.showEnemies.getValue()) return false;
+            } else {
+                if (!this.showPlayers.getValue()) return false;
+            }
+            if (this.enemiesOnly.getValue() && !TeamUtil.isTarget(entityPlayer)) {
+                return false;
+            }
+            return true;
         }
     }
 
@@ -152,6 +172,16 @@ public class Tracers extends Module {
     @EventTarget
     public void onRender(Render2DEvent event) {
         if (this.isEnabled() && this.drawArrows.getValue()) {
+            if (mc.currentScreen != null && !this.renderInGUIs.getValue()) return;
+
+            ScaledResolution sr = new ScaledResolution(mc);
+            HUD hud = (HUD) Myau.moduleManager.modules.get(HUD.class);
+            float hudScale = hud.scale.getValue();
+
+            GlStateManager.pushMatrix();
+            GlStateManager.scale(hudScale, hudScale, 0.0F);
+            GlStateManager.translate((float) sr.getScaledWidth() / 2.0F / hudScale, (float) sr.getScaledHeight() / 2.0F / hudScale, 0.0F);
+
             for (EntityPlayer player : TeamUtil.getLoadedEntitiesSorted().stream().filter(entity -> entity instanceof EntityPlayer && this.shouldRender((EntityPlayer) entity)).map(EntityPlayer.class::cast).collect(Collectors.toList())) {
                 float yawBetween = RotationUtil.getYawBetween(
                         RenderUtil.lerpDouble(mc.thePlayer.posX, mc.thePlayer.prevPosX, event.getPartialTicks()),
@@ -164,35 +194,75 @@ public class Tracers extends Module {
                 }
                 float arrowDirX = (float) Math.sin(Math.toRadians(yawBetween));
                 float arrowDirY = (float) Math.cos(Math.toRadians(yawBetween)) * -1.0F;
-                float opacity = this.opacity.getValue().floatValue() / 100.0F;
+                float opacityVal = this.opacity.getValue().floatValue() / 100.0F;
                 yawBetween = Math.abs(MathHelper.wrapAngleTo180_float(yawBetween));
                 if (yawBetween < 30.0F) {
-                    opacity = 0.0F;
+                    opacityVal = 0.0F;
                 } else if (yawBetween < 60.0F) {
-                    opacity *= (yawBetween - 30.0F) / 30.0F;
+                    opacityVal *= (yawBetween - 30.0F) / 30.0F;
                 }
-                HUD hud = (HUD) Myau.moduleManager.modules.get(HUD.class);
+                if (opacityVal == 0.0F) continue;
+                if (this.renderOnlyOffScreen.getValue() && yawBetween < 90.0F) continue;
+
+                Color color = this.getEntityColor(player, opacityVal);
+                int rgb = color.getRGB();
+                float red = (float) color.getRed() / 255.0F;
+                float green = (float) color.getGreen() / 255.0F;
+                float blue = (float) color.getBlue() / 255.0F;
+                float alpha = (float) color.getAlpha() / 255.0F;
+
+                float r = (float) this.arrowRadius.getInput();
+
                 GlStateManager.pushMatrix();
-                GlStateManager.scale(hud.scale.getValue(), hud.scale.getValue(), 0.0F);
-                GlStateManager.translate(
-                        (float) new ScaledResolution(mc).getScaledWidth() / 2.0F / hud.scale.getValue(),
-                        (float) new ScaledResolution(mc).getScaledHeight() / 2.0F / hud.scale.getValue(),
-                        0.0F
-                );
-                GlStateManager.pushMatrix();
-                GlStateManager.translate(55.0F * arrowDirX + 1.0F, 55.0F * arrowDirY + 1.0F, -100.0F);
+                GlStateManager.translate(r * arrowDirX + 1.0F, r * arrowDirY + 1.0F, 0.0F);
+                float rotation = (float) (Math.atan2(arrowDirY, arrowDirX) * (180.0 / Math.PI) + 90.0);
+                GlStateManager.rotate(rotation, 0.0F, 0.0F, 1.0F);
                 RenderUtil.enableRenderState();
-                RenderUtil.drawTriangle(
-                        0.0F,
-                        0.0F,
-                        (float) (Math.atan2(arrowDirY, arrowDirX) + Math.PI),
-                        10.0F,
-                        this.getEntityColor(player, opacity).getRGB()
-                );
+
+                switch (this.arrowMode.getValue()) {
+                    case 0: // Caret
+                        GL11.glColor4f(red, green, blue, alpha);
+                        GL11.glEnable(3042);
+                        GL11.glDisable(3553);
+                        GL11.glBlendFunc(770, 771);
+                        GL11.glEnable(2848);
+                        double halfAngle = 0.6108652353286743;
+                        double size = 9.0;
+                        double offsetY = 5.0;
+                        GL11.glLineWidth(3.0F);
+                        GL11.glBegin(3);
+                        GL11.glVertex2d(Math.sin(-halfAngle) * size, Math.cos(-halfAngle) * size - offsetY);
+                        GL11.glVertex2d(0.0, -offsetY);
+                        GL11.glVertex2d(Math.sin(halfAngle) * size, Math.cos(halfAngle) * size - offsetY);
+                        GL11.glEnd();
+                        GL11.glEnable(3553);
+                        GL11.glDisable(3042);
+                        GL11.glDisable(2848);
+                        break;
+                    case 1: // Greater than
+                        GlStateManager.rotate(-90.0F, 0.0F, 0.0F, 1.0F);
+                        GlStateManager.scale(1.5F, 1.5F, 1.5F);
+                        mc.fontRendererObj.drawString(">", -2.0F, -4.0F, rgb, false);
+                        break;
+                    case 2: // Triangle
+                        RenderUtil.drawTriangle(0.0F, 0.0F, 0.0F, 10.0F, rgb);
+                        break;
+                }
+
                 RenderUtil.disableRenderState();
                 GlStateManager.popMatrix();
-                GlStateManager.popMatrix();
+
+                if (this.showDistance.getValue()) {
+                    String text = (int) mc.thePlayer.getDistanceToEntity(player) + "m";
+                    GlStateManager.pushMatrix();
+                    GlStateManager.translate(r * arrowDirX, r * arrowDirY - 13.0F, 0.0F);
+                    GlStateManager.scale(0.8F, 0.8F, 0.8F);
+                    mc.fontRendererObj.drawString(text, - (float) mc.fontRendererObj.getStringWidth(text) / 2, -4.0F, -1, true);
+                    GlStateManager.popMatrix();
+                }
             }
+
+            GlStateManager.popMatrix();
         }
     }
 }
