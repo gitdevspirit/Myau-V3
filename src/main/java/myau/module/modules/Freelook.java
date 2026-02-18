@@ -1,7 +1,6 @@
 package myau.module.modules;
 
 import myau.event.EventTarget;
-import myau.events.MouseEvent;
 import myau.events.Render3DEvent;
 import myau.events.TickEvent;
 import myau.module.Module;
@@ -9,8 +8,8 @@ import myau.property.properties.BooleanProperty;
 import myau.property.properties.ModeProperty;
 import myau.property.properties.PercentProperty;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.settings.KeyBinding;
 import org.lwjgl.input.Mouse;
+import org.lwjgl.input.Keyboard;
 
 /**
  * FreeLook - Allows free camera rotation while keeping movement direction locked.
@@ -26,26 +25,22 @@ public class Freelook extends Module {
         "Toggle"     // Press once to toggle on/off
     });
 
-    public final PercentProperty sensitivity = new PercentProperty("Sensitivity", 100, "Adjust mouse sensitivity while freelook is active");
+    public final PercentProperty sensitivity = new PercentProperty("Sensitivity", 100);
 
-    public final BooleanProperty smoothReturn = new BooleanProperty("Smooth Return", true,
-        "Smoothly reset camera to body rotation when freelook ends");
+    public final BooleanProperty smoothReturn = new BooleanProperty("Smooth Return", true);
 
-    public final PercentProperty returnSpeed = new PercentProperty("Return Speed", 50,
-        "How fast the camera snaps back (only if Smooth Return is enabled)");
+    public final PercentProperty returnSpeed = new PercentProperty("Return Speed", 50);
 
     // ── Internal state ───────────────────────────────────────────────────────────
     private boolean isActive = false;
-    private float originalYaw = 0.0f;
-    private float originalPitch = 0.0f;
     private float currentYawOffset = 0.0f;
     private float currentPitchOffset = 0.0f;
     private float targetYawOffset = 0.0f;
     private float targetPitchOffset = 0.0f;
 
     public Freelook() {
-        super("Freelook", true); // true = default enabled, change to false if you want it off by default
-        setKeybind(Keyboard.KEY_F); // Default key: F
+        super("Freelook", true);
+        setKeybind(Keyboard.KEY_F);
     }
 
     @Override
@@ -66,49 +61,48 @@ public class Freelook extends Module {
         targetPitchOffset = 0.0f;
     }
 
-        @EventTarget
-    public void onTick(TickEvent event) {
-    if (event.getType() != TickEvent.Type.PRE) return;
-
-    // ── Activation logic ─────────────────────────────────────────────────────
-    if (mode.getValue() == 0) { // "Hold"
-        isActive = isKeybindDown();
-    } else { // "Toggle" (index 1)
-        if (isKeyPressedThisTick()) {
-            isActive = !isActive;
-        }
-    }
-
-    // ── Smooth return when freelook ends ─────────────────────────────────────
-    if (!isActive && smoothReturn.getValue()) {
-        targetYawOffset = 0.0f;
-        targetPitchOffset = 0.0f;
-
-        float speed = returnSpeed.getValue().floatValue() / 100f * 0.25f;
-        currentYawOffset   += (targetYawOffset   - currentYawOffset)   * speed;
-        currentPitchOffset += (targetPitchOffset - currentPitchOffset) * speed;
-
-        if (Math.abs(currentYawOffset)   < 0.05f) currentYawOffset   = 0.0f;
-        if (Math.abs(currentPitchOffset) < 0.05f) currentPitchOffset = 0.0f;
-    }
-}
-
     @EventTarget
-    public void onMouse(MouseEvent event) {
-        if (!isActive || mc.currentScreen != null) return;
+    public void onTick(TickEvent event) {
+        if (event.getType() != TickEvent.Type.PRE) return;
 
-        // Only capture mouse movement when freelook is active
-        if (event.getDeltaX() != 0 || event.getDeltaY() != 0) {
-            float sensMult = sensitivity.getValue().floatValue() / 100f;
-            float yawDelta   = event.getDeltaX() * 0.15f * sensMult;
-            float pitchDelta = event.getDeltaY() * 0.15f * sensMult * -1; // invert Y
+        // ── Activation logic ─────────────────────────────────────────────────────
+        if (mode.getValue() == 0) { // Hold
+            isActive = isKeybindDown();
+        } else { // Toggle
+            if (isKeyPressedThisTick()) {
+                isActive = !isActive;
+            }
+        }
 
-            // Accumulate offsets
-            targetYawOffset   += yawDelta;
-            targetPitchOffset += pitchDelta;
+        // ── Smooth return when freelook ends ─────────────────────────────────────
+        if (!isActive && smoothReturn.getValue()) {
+            targetYawOffset = 0.0f;
+            targetPitchOffset = 0.0f;
 
-            // Clamp pitch like normal camera
-            targetPitchOffset = Math.max(-90.0f, Math.min(90.0f, targetPitchOffset));
+            float speed = returnSpeed.getValue().floatValue() / 100f * 0.25f;
+            currentYawOffset   += (targetYawOffset   - currentYawOffset)   * speed;
+            currentPitchOffset += (targetPitchOffset - currentPitchOffset) * speed;
+
+            if (Math.abs(currentYawOffset)   < 0.05f) currentYawOffset   = 0.0f;
+            if (Math.abs(currentPitchOffset) < 0.05f) currentPitchOffset = 0.0f;
+        }
+
+        // ── Poll mouse movement when freelook is active ──────────────────────────
+        if (isActive && mc.currentScreen == null) {
+            int dx = Mouse.getDX();
+            int dy = Mouse.getDY();
+
+            if (dx != 0 || dy != 0) {
+                float sensMult = sensitivity.getValue().floatValue() / 100f;
+                float yawDelta   = dx   * 0.15f * sensMult;
+                float pitchDelta = dy   * 0.15f * sensMult * -1f; // invert Y
+
+                targetYawOffset   += yawDelta;
+                targetPitchOffset += pitchDelta;
+
+                // Clamp pitch to normal limits
+                targetPitchOffset = Math.max(-90.0f, Math.min(90.0f, targetPitchOffset));
+            }
         }
     }
 
@@ -116,35 +110,31 @@ public class Freelook extends Module {
     public void onRender3D(Render3DEvent event) {
         if (!isActive) return;
 
-        // Apply camera offsets (yaw/pitch) without changing player rotation
+        // Apply camera offsets without changing player body rotation
         mc.thePlayer.rotationYawHead   = mc.thePlayer.rotationYaw   + currentYawOffset;
         mc.thePlayer.rotationPitchHead = mc.thePlayer.rotationPitch + currentPitchOffset;
 
-        // Smoothly interpolate current → target (for smooth return too)
-        float lerpFactor = 0.85f; // higher = snappier
+        // Smooth interpolation current → target
+        float lerpFactor = 0.85f;
         currentYawOffset   = lerp(currentYawOffset,   targetYawOffset,   lerpFactor);
         currentPitchOffset = lerp(currentPitchOffset, targetPitchOffset, lerpFactor);
     }
 
-    // Simple lerp helper
     private float lerp(float a, float b, float t) {
         return a + (b - a) * t;
     }
 
-    // Helper to detect key press this tick (for toggle mode)
+    // ── Helpers ──────────────────────────────────────────────────────────────────
     private boolean isKeyPressedThisTick() {
         return getKeybind().isPressed();
     }
 
-    // Optional: override if you want different activation feel
     private boolean isKeybindDown() {
         return getKeybind().isKeyDown();
     }
 
-    // HUD suffix (shows status)
+    // HUD suffix
     @Override
-    public String getSuffix() {
-        if (!isActive) return "";
-        return mode.is("Hold") ? "HOLD" : "ON";
-    }
-}
+    public String[] getSuffix() {
+        if (!isActive) return new String[0];
+        return new String[]{ mode.getValue() == 
