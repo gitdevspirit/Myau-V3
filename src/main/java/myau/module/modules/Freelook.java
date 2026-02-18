@@ -104,7 +104,6 @@ public class Freelook extends Module {
                 targetPitchOffset = Math.max(-90.0f, Math.min(90.0f, targetPitchOffset));
             }
         }
-    }
 
     @EventTarget
     public void onRender3D(Render3DEvent event) {
@@ -133,9 +132,9 @@ public class Freelook extends Module {
         return getKeybind().isKeyDown();
     }
 
-    // HUD suffix
     @Override
     public String[] getSuffix() {
         if (!isActive) return new String[0];
-        return new String[]{ mode.getValue() == 
-                           }
+        return new String[]{ mode.getValue() == 0 ? "HOLD" : "ON" };
+    }
+}
