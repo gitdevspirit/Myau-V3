@@ -13,19 +13,15 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemSword;
 import net.minecraft.network.play.client.C0BPacketEntityAction;
+
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
-/**
- * AutoBlock - Packet-based sword blocking for 1.8.9.
- * Uses START/STOP_SNEAKING packets to allow KillAura to keep attacking.
- */
 public class Autoblock extends Module {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
 
-    public final PercentProperty range = new PercentProperty("Range", 45); // 0–100 → 0–10 blocks
+    public final PercentProperty range = new PercentProperty("Range", 45);
     public final IntProperty maxHurtTime = new IntProperty("Max Hurt Time", 8, 0, 10);
     public final IntProperty maxHoldDuration = new IntProperty("Max Hold Ticks", 5, 1, 20);
     public final IntProperty maxLagDuration = new IntProperty("Lag Comp Ticks", 3, 0, 10);
@@ -41,6 +37,7 @@ public class Autoblock extends Module {
 
     @EventTarget
     public void onTick(TickEvent event) {
+
         if (!isEnabled()) {
             stopBlocking();
             return;
@@ -63,86 +60,4 @@ public class Autoblock extends Module {
         }
 
         double distance = mc.thePlayer.getDistanceToEntity(target);
-        float realRange = range.getValue().floatValue() / 10f;
-
-        if (distance > realRange) {
-            stopBlocking();
-            return;
-        }
-
-        if (onlyWhenSwinging.getValue() && target.swingProgressInt <= 0) {
-            stopBlocking();
-            return;
-        }
-
-        if (mc.thePlayer.hurtTime > maxHurtTime.getValue()) {
-            stopBlocking();
-            return;
-        }
-
-        // If attacking, unblock so hits register
-if (mc.gameSettings.keyBindAttack.isKeyDown()) {
-    stopBlocking();
-    return;
-}
-
-// Normal autoblock logic
-if (blockTicks < maxHoldDuration.getValue()) {
-    startBlocking();
-    blockTicks++;
-}
-
-        if (blockTicks > 0 && distance > realRange + 0.5) {
-            blockTicks--;
-            if (blockTicks > 0) {
-                startBlocking();
-            }
-        }
-    }
-
-    private boolean isHoldingSword() {
-        return mc.thePlayer.getCurrentEquippedItem() != null
-                && mc.thePlayer.getCurrentEquippedItem().getItem() instanceof ItemSword;
-    }
-
-    private EntityLivingBase getClosestEnemy() {
-        List<Entity> entities = mc.theWorld.loadedEntityList;
-
-        return entities.stream()
-                .filter(e -> e instanceof EntityLivingBase
-                        && e != mc.thePlayer
-                        && !(e instanceof EntityPlayer && TeamUtil.isFriend((EntityPlayer) e))
-                        && mc.thePlayer.canEntityBeSeen(e))
-                .map(e -> (EntityLivingBase) e)
-                .min(Comparator.comparingDouble(e -> mc.thePlayer.getDistanceToEntity(e)))
-                .orElse(null);
-    }
-
-    private void startBlocking() {
-        if (!isBlocking) {
-            mc.thePlayer.sendQueue.addToSendQueue(
-                new C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.START_SNEAKING)
-            );
-            isBlocking = true;
-        }
-    }
-
-    private void stopBlocking() {
-        if (isBlocking) {
-            mc.thePlayer.sendQueue.addToSendQueue(
-                new C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.STOP_SNEAKING)
-            );
-            isBlocking = false;
-            blockTicks = 0;
-        }
-    }
-
-    public void onDisable() {
-        stopBlocking();
-        blockTicks = 0;
-    }
-
-    public String[] getSuffix() {
-        return isBlocking ? new String[]{"BLOCKING"} : new String[0];
-    }
-}
+        float realRange = range.getValue().floatValue
