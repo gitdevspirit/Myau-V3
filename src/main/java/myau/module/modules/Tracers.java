@@ -11,7 +11,7 @@ import myau.util.RenderUtil;
 import myau.util.RotationUtil;
 import myau.util.TeamUtil;
 import myau.property.properties.BooleanProperty;
-import myau.property.properties.PercentProperty;
+// import myau.property.properties.PercentProperty;
 import myau.property.properties.ModeProperty;
 // import myau.property.properties.SliderProperty;
 import net.minecraft.client.Minecraft;
