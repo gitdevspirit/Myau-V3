@@ -13,7 +13,7 @@ import myau.util.TeamUtil;
 import myau.property.properties.BooleanProperty;
 import myau.property.properties.PercentProperty;
 import myau.property.properties.ModeProperty;
-import myau.property.properties.SliderProperty;
+// import myau.property.properties.SliderProperty;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.GlStateManager;
@@ -51,7 +51,7 @@ public class Tracers extends Module {
      */
     public final ModeProperty arrowMode         = new ModeProperty("arrow", 3,
             new String[]{"Caret", "Greater than", "Triangle", "Slinky"});
-    public final SliderProperty arrowRadius     = new SliderProperty("radius",  50.0, 30.0, 200.0, 5.0);
+   // public final SliderProperty arrowRadius     = new SliderProperty("radius",  50.0, 30.0, 200.0, 5.0);
 
     // ── Misc properties ───────────────────────────────────────────────────────
     public final BooleanProperty showDistance        = new BooleanProperty("distance",        true);
