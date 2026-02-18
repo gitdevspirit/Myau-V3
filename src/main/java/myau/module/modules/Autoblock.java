@@ -12,14 +12,14 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemSword;
-import net.minecraft.network.play.client.CPacketEntityAction;
+import net.minecraft.network.play.client.C0BPacketEntityAction;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * AutoBlock - Packet-based blocking that allows KillAura to keep attacking.
- * Uses START/STOP_SNEAKING packets for 1.8.9 compatibility.
+ * AutoBlock - Packet-based sword blocking for 1.8.9.
+ * Uses START/STOP_SNEAKING packets to allow simultaneous attacking (KillAura).
  */
 public class Autoblock extends Module {
 
@@ -80,7 +80,7 @@ public class Autoblock extends Module {
             return;
         }
 
-        // Packet block: keep sending START_SNEAKING to maintain block state
+        // Start/continue packet blocking
         if (blockTicks < maxHoldDuration.getValue()) {
             startBlocking();
             blockTicks++;
@@ -115,9 +115,8 @@ public class Autoblock extends Module {
 
     private void startBlocking() {
         if (!isBlocking) {
-            // Send START_SNEAKING packet (1.8.9 block method)
             mc.thePlayer.sendQueue.addToSendQueue(
-                new CPacketEntityAction(mc.thePlayer, CPacketEntityAction.Action.START_SNEAKING)
+                new C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.START_SNEAKING)
             );
             isBlocking = true;
         }
@@ -125,9 +124,8 @@ public class Autoblock extends Module {
 
     private void stopBlocking() {
         if (isBlocking) {
-            // Send STOP_SNEAKING packet
             mc.thePlayer.sendQueue.addToSendQueue(
-                new CPacketEntityAction(mc.thePlayer, CPacketEntityAction.Action.STOP_SNEAKING)
+                new C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.STOP_SNEAKING)
             );
             isBlocking = false;
             blockTicks = 0;
