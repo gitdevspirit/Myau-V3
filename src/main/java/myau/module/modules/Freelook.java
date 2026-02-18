@@ -29,112 +29,108 @@ public class Freelook extends Module {
     private float realYaw;
     private float realPitch;
 
-    private int previousPerspective = 0;
+    private float prevCameraYaw;   // for smooth interpolation if needed
+    private float prevCameraPitch;
 
     public Freelook() {
         super("Freelook", true);
-        // Changed default key to 6
-        this.setKey(Keyboard.KEY_6);
+        this.setKey(Keyboard.KEY_6);  // default to 6
     }
 
     @EventTarget
     public void onTick(TickEvent event) {
         if (!isEnabled()) return;
 
-        // Activation logic
         boolean keyDown = Keyboard.isKeyDown(this.getKey());
 
         if (mode.getValue() == 0) { // Hold
             isActive = keyDown && mc.currentScreen == null;
         } else { // Toggle
-            if (keyDown) {
-                if (!wasPressed) {
-                    isActive = !isActive;
-                    wasPressed = true;
-                }
-            } else {
+            if (keyDown && !wasPressed) {
+                isActive = !isActive;
+                wasPressed = true;
+            }
+            if (!keyDown) {
                 wasPressed = false;
             }
         }
 
         if (isActive && mc.currentScreen == null) {
 
-            // First activation frame → store real angles & switch to 3rd person
-            if (!wasPressed || !isActiveWasTrueLastTick) {  // simple way to detect activation start
-                realYaw = mc.thePlayer.rotationYaw;
+            // On activation start: capture real angles
+            if (!wasPressed || !wasActiveLastTick) {
+                realYaw   = mc.thePlayer.rotationYaw;
                 realPitch = mc.thePlayer.rotationPitch;
-                cameraYaw = realYaw;
+                cameraYaw   = realYaw;
                 cameraPitch = realPitch;
-                previousPerspective = mc.gameSettings.thirdPersonView;
-                mc.gameSettings.thirdPersonView = 1; // third person back
+                prevCameraYaw   = cameraYaw;
+                prevCameraPitch = cameraPitch;
             }
 
-            // ─────────────────────────────────────────────
-            // Mouse movement (this is the main fix/improvement)
-            // ─────────────────────────────────────────────
-            if (Mouse.isInsideWindow() && Mouse.isButtonDown(0) == false && Mouse.isButtonDown(1) == false) {
-                Mouse.getDX(); // clear accumulated movement from previous frames
-                Mouse.getDY();
-            }
-
+            // Mouse deltas
             int dx = Mouse.getDX();
             int dy = Mouse.getDY();
 
             float sens = sensitivity.getValue().floatValue() / 100f * 0.15f;
 
-            // Yaw (horizontal) — normal direction
             cameraYaw += dx * sens;
 
-            // Pitch (vertical) — with optional invert
             float pitchDelta = dy * sens;
             if (invertPitch.getValue()) {
                 pitchDelta = -pitchDelta;
             }
-            cameraPitch -= pitchDelta;   // note: -= because MC pitch is inverted natively
+            cameraPitch -= pitchDelta;  // MC pitch is negative-up
 
             cameraPitch = Math.max(-90.0F, Math.min(90.0F, cameraPitch));
 
-            // Keep real player rotation frozen
-            mc.thePlayer.rotationYaw = realYaw;
+            // Freeze player body / movement direction completely
+            mc.thePlayer.rotationYaw   = realYaw;
             mc.thePlayer.rotationPitch = realPitch;
-            mc.thePlayer.prevRotationYaw = realYaw;
+            mc.thePlayer.prevRotationYaw   = realYaw;
             mc.thePlayer.prevRotationPitch = realPitch;
+
+            // Also freeze render offsets that affect movement/legs
+            mc.thePlayer.renderYawOffset     = realYaw;
+            mc.thePlayer.rotationYawHead     = realYaw;  // head starts at body direction
         }
 
-        // When turning off freelook
+        // When deactivating → smooth return to real angles
         if (!isActive) {
-            // Smoothly interpolate camera back (visual only)
             if (smoothReturn.getValue()) {
-                float speed = returnSpeed.getValue().floatValue() / 100f * 0.35f;
-                cameraYaw += (realYaw - cameraYaw) * speed;
+                float speed = returnSpeed.getValue().floatValue() / 100f * 0.4f;  // slightly faster feel
+                cameraYaw   += (realYaw   - cameraYaw)   * speed;
                 cameraPitch += (realPitch - cameraPitch) * speed;
+
+                // Snap when very close to avoid micro-jitter
+                if (Math.abs(cameraYaw - realYaw) < 0.4f && Math.abs(cameraPitch - realPitch) < 0.4f) {
+                    cameraYaw   = realYaw;
+                    cameraPitch = realPitch;
+                }
             } else {
-                cameraYaw = realYaw;
+                cameraYaw   = realYaw;
                 cameraPitch = realPitch;
             }
-
-            // Restore original perspective when fully returned or instant
-            if (!smoothReturn.getValue() || Math.abs(cameraYaw - realYaw) < 0.2f && Math.abs(cameraPitch - realPitch) < 0.2f) {
-                mc.gameSettings.thirdPersonView = previousPerspective;
-            }
         }
 
-        // Remember state for next tick (used for first-frame detection)
-        isActiveWasTrueLastTick = isActive;
+        wasActiveLastTick = isActive;
     }
 
-    private boolean isActiveWasTrueLastTick = false;
+    private boolean wasActiveLastTick = false;
 
     @EventTarget
     public void onRender3D(Render3DEvent event) {
         if (!isEnabled()) return;
 
-        if (isActive || smoothReturn.getValue()) {
-            // Apply freelook camera angles to head & body render
+        if (isActive || (smoothReturn.getValue() && Math.abs(cameraYaw - realYaw) > 0.1f)) {
+            // Apply to head only → this rotates the camera/view in first person
+            // without turning body/movement direction
             mc.thePlayer.rotationYawHead = cameraYaw;
-            mc.thePlayer.renderYawOffset = cameraYaw;
-            // Optional: also affects third-person camera direction
-            // mc.thePlayer.rotationYaw = cameraYaw;  // uncomment only if you want camera behind new direction
+
+            // Optional: also set renderYawOffset if legs/arms look wrong in 1st person mods
+            // mc.thePlayer.renderYawOffset = cameraYaw;  // usually leave this at realYaw
+        } else {
+            // Ensure reset when inactive and no smoothing left
+            mc.thePlayer.rotationYawHead = realYaw;
         }
     }
 
@@ -142,9 +138,11 @@ public class Freelook extends Module {
     public void onDisabled() {
         isActive = false;
         wasPressed = false;
-        isActiveWasTrueLastTick = false;
-        if (mc.gameSettings != null) {
-            mc.gameSettings.thirdPersonView = previousPerspective;
+        wasActiveLastTick = false;
+
+        if (mc.thePlayer != null) {
+            mc.thePlayer.rotationYawHead = mc.thePlayer.rotationYaw;
+            mc.thePlayer.renderYawOffset = mc.thePlayer.rotationYaw;
         }
     }
 
