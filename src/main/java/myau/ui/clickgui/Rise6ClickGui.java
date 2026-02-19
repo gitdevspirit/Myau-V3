@@ -219,4 +219,53 @@ public class Rise6ClickGui extends GuiScreen {
 
         // Config panel clicks
         if (showConfigs) {
-            configPan
+            configPanel.mouseClicked(posX + 6, configBtnY + 20, mouseX, mouseY, button);
+        }
+
+        // Search + module panel
+        int panelX = posX + SIDEBAR_WIDTH + 8;
+        searchBar.mouseClicked(mouseX, mouseY, button);
+        modulePanel.mouseClicked(panelX, posY + 38, mouseX, mouseY, button);
+    }
+
+    @Override
+    public void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
+        if (dragging) {
+            ScaledResolution sr = new ScaledResolution(mc);
+            posX = Math.max(0, Math.min(sr.getScaledWidth()  - TOTAL_WIDTH, mouseX - dragOffsetX));
+            posY = Math.max(0, Math.min(sr.getScaledHeight() - 100,         mouseY - dragOffsetY));
+        } else {
+            modulePanel.mouseClickMove(mouseX);
+        }
+    }
+
+    @Override
+    protected void mouseReleased(int mouseX, int mouseY, int state) {
+        dragging = false;
+        modulePanel.mouseReleased();
+    }
+
+    @Override
+    public void handleMouseInput() throws IOException {
+        super.handleMouseInput();
+        int delta = org.lwjgl.input.Mouse.getEventDWheel();
+        if (delta != 0) {
+            modulePanel.handleScroll(delta);
+        }
+    }
+
+    @Override
+    protected void keyTyped(char typedChar, int keyCode) throws IOException {
+        if (keyCode == 1) {
+            mc.displayGuiScreen(null);
+            return;
+        }
+        if (searchBar.keyTyped(typedChar, keyCode)) return;
+        modulePanel.keyTyped(typedChar, keyCode);
+    }
+
+    @Override
+    public boolean doesGuiPauseGame() {
+        return false;
+    }
+}
