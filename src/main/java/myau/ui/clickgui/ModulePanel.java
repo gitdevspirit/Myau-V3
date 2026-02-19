@@ -16,18 +16,14 @@ public class ModulePanel {
 
     private SidebarCategory category;
 
-    // Toggle animation per module
     private final Map<Module, Float> toggleAnim = new HashMap<>();
 
-    // Which module is expanded (settings visible)
     private Module expandedModule = null;
 
-    // Slider drag state
     private SliderSetting draggingSlider = null;
     private int sliderRenderX = 0;
     private int sliderRenderWidth = 0;
 
-    // Keybind listening state
     private KeybindSetting listeningKeybind = null;
 
     public ModulePanel(SidebarCategory category) {
@@ -51,96 +47,96 @@ public class ModulePanel {
             }
 
             int width = 160;
-            int height = 18;
+            int height = 16;
 
             boolean hovered =
                     mouseX >= x && mouseX <= x + width &&
                     mouseY >= offsetY && mouseY <= offsetY + height;
 
             // Module row background
-            int bg = hovered ? 0xFF2A2A2A : 0xFF1A1A1A;
-            RoundedUtils.drawRoundedRect(x, offsetY, width, height, 5, bg);
+            RoundedUtils.drawRoundedRect(x, offsetY, width, height, 4, hovered ? 0xFF2A2A2A : 0xFF1A1A1A);
 
             // Module name
-            mc.fontRendererObj.drawString(module.getName(), x + 6, offsetY + 6, 0xFFFFFFFF);
+            mc.fontRendererObj.drawString(module.getName(), x + 5, offsetY + 5, 0xFFFFFFFF);
 
-            // Toggle switch animation
+            // Toggle animation
             boolean enabled = module.isEnabled();
             toggleAnim.putIfAbsent(module, enabled ? 1f : 0f);
             float anim = toggleAnim.get(module);
             anim += ((enabled ? 1f : 0f) - anim) * 0.2f;
             toggleAnim.put(module, anim);
 
-            int toggleX = x + width - 28;
+            int toggleX = x + width - 26;
             int toggleY = offsetY + 4;
-            int blendedColor = blend(0xFF555555, 0xFF55AAFF, anim);
-            RoundedUtils.drawRoundedRect(toggleX, toggleY, 22, 10, 5, blendedColor);
-            RoundedUtils.drawRoundedRect(toggleX + 2 + (int)(anim * 10), toggleY + 1, 8, 8, 4, 0xFFFFFFFF);
+            RoundedUtils.drawRoundedRect(toggleX, toggleY, 20, 8, 4, blend(0xFF555555, 0xFF55AAFF, anim));
+            RoundedUtils.drawRoundedRect(toggleX + 2 + (int)(anim * 8), toggleY + 1, 6, 6, 3, 0xFFFFFFFF);
 
-            // Expand arrow (shows if module has settings)
+            // Expand arrow
             if (!module.getSettings().isEmpty()) {
-                boolean expanded = expandedModule == module;
-                String arrow = expanded ? "v" : ">";
-                mc.fontRendererObj.drawString(arrow, x + width - 40, offsetY + 6, 0xFF888888);
+                String arrow = expandedModule == module ? "v" : ">";
+                mc.fontRendererObj.drawString(arrow, x + width - 38, offsetY + 5, 0xFF888888);
             }
 
-            offsetY += height + 2;
+            offsetY += height + 1;
 
-            // Settings rows (only for expanded module)
+            // Settings
             if (expandedModule == module) {
                 for (Setting setting : module.getSettings()) {
-
-                    // Settings background
-                    RoundedUtils.drawRoundedRect(x + 8, offsetY, width - 8, 20, 4, 0xFF222222);
-
-                    // Setting name
-                    mc.fontRendererObj.drawString(setting.getName(), x + 14, offsetY + 3, 0xFFAAAAAA);
 
                     if (setting instanceof SliderSetting) {
                         SliderSetting slider = (SliderSetting) setting;
 
-                        int barX = x + 14;
-                        int barY = offsetY + 12;
-                        int barW = width - 28;
-                        int barH = 4;
+                        int rowH = 22;
+                        RoundedUtils.drawRoundedRect(x + 6, offsetY, width - 6, rowH, 3, 0xFF202020);
 
-                        // Track
-                        RoundedUtils.drawRoundedRect(barX, barY, barW, barH, 2, 0xFF444444);
-                        // Fill
-                        int fillW = (int)(barW * slider.getPercent());
-                        if (fillW > 0)
-                            RoundedUtils.drawRoundedRect(barX, barY, fillW, barH, 2, 0xFF55AAFF);
+                        // Name
+                        mc.fontRendererObj.drawString(setting.getName(), x + 10, offsetY + 3, 0xFF999999);
+
+                        // Value
+                        String valStr = formatDouble(slider.getValue());
+                        mc.fontRendererObj.drawString(valStr,
+                                x + width - mc.fontRendererObj.getStringWidth(valStr) - 8,
+                                offsetY + 3, 0xFF55AAFF);
+
+                        // Slider bar
+                        int barX = x + 10;
+                        int barY = offsetY + 14;
+                        int barW = width - 20;
+                        int barH = 3;
+
+                        RoundedUtils.drawRoundedRect(barX, barY, barW, barH, 1, 0xFF444444);
+
+                        int fillW = Math.max(1, (int)(barW * slider.getPercent()));
+                        RoundedUtils.drawRoundedRect(barX, barY, fillW, barH, 1, 0xFF55AAFF);
+
                         // Knob
                         int knobX = barX + fillW - 3;
-                        RoundedUtils.drawRoundedRect(knobX, barY - 2, 6, 8, 3, 0xFFFFFFFF);
+                        RoundedUtils.drawRoundedRect(knobX, barY - 2, 6, 7, 3, 0xFFFFFFFF);
 
-                        // Value label
-                        String valStr = formatDouble(slider.getValue());
-                        mc.fontRendererObj.drawString(valStr, x + width - mc.fontRendererObj.getStringWidth(valStr) - 6, offsetY + 3, 0xFF55AAFF);
-
-                        // Store bar position for drag detection
                         if (draggingSlider == slider) {
                             sliderRenderX = barX;
                             sliderRenderWidth = barW;
                         }
 
-                        offsetY += 26;
+                        offsetY += rowH + 1;
 
                     } else if (setting instanceof KeybindSetting) {
                         KeybindSetting kb = (KeybindSetting) setting;
 
+                        int rowH = 16;
+                        RoundedUtils.drawRoundedRect(x + 6, offsetY, width - 6, rowH, 3, 0xFF202020);
+
+                        mc.fontRendererObj.drawString(setting.getName(), x + 10, offsetY + 4, 0xFF999999);
+
                         boolean isListening = listeningKeybind == kb;
-                        String keyLabel = isListening ? "[ Press key... ]" : "[ " + kb.getDisplayName() + " ]";
+                        String keyLabel = isListening ? "[ ... ]" : "[ " + kb.getDisplayName() + " ]";
                         int keyColor = isListening ? 0xFFFFAA00 : 0xFF55AAFF;
-
                         int labelW = mc.fontRendererObj.getStringWidth(keyLabel);
-                        mc.fontRendererObj.drawString(keyLabel, x + width - labelW - 6, offsetY + 3, keyColor);
+                        mc.fontRendererObj.drawString(keyLabel, x + width - labelW - 8, offsetY + 4, keyColor);
 
-                        offsetY += 22;
+                        offsetY += rowH + 1;
                     }
                 }
-
-                // Small divider after settings
                 offsetY += 2;
             }
         }
@@ -155,7 +151,7 @@ public class ModulePanel {
 
         for (Module module : category.getModules()) {
             int width = 160;
-            int height = 18;
+            int height = 16;
 
             boolean hovered =
                     mouseX >= x && mouseX <= x + width &&
@@ -163,10 +159,8 @@ public class ModulePanel {
 
             if (hovered) {
                 if (button == 0) {
-                    // Left click = toggle
                     module.toggle();
                 } else if (button == 1) {
-                    // Right click = expand/collapse settings
                     if (!module.getSettings().isEmpty()) {
                         expandedModule = (expandedModule == module) ? null : module;
                         draggingSlider = null;
@@ -176,23 +170,21 @@ public class ModulePanel {
                 return;
             }
 
-            offsetY += height + 2;
+            offsetY += height + 1;
 
-            // Check clicks inside expanded settings
             if (expandedModule == module) {
                 for (Setting setting : module.getSettings()) {
 
                     if (setting instanceof SliderSetting) {
                         SliderSetting slider = (SliderSetting) setting;
 
-                        int barX = x + 14;
-                        int barY = offsetY + 12;
-                        int barW = width - 28;
-                        int barH = 8;
+                        int barX = x + 10;
+                        int barY = offsetY + 14;
+                        int barW = width - 20;
 
                         if (button == 0 &&
                             mouseX >= barX && mouseX <= barX + barW &&
-                            mouseY >= barY - 2 && mouseY <= barY + barH) {
+                            mouseY >= barY - 2 && mouseY <= barY + 9) {
 
                             draggingSlider = slider;
                             sliderRenderX = barX;
@@ -200,25 +192,20 @@ public class ModulePanel {
                             updateSlider(mouseX);
                         }
 
-                        offsetY += 26;
+                        offsetY += 23;
 
                     } else if (setting instanceof KeybindSetting) {
                         KeybindSetting kb = (KeybindSetting) setting;
 
-                        int rowY = offsetY;
                         if (button == 0 &&
-                            mouseX >= x + 8 && mouseX <= x + width &&
-                            mouseY >= rowY && mouseY <= rowY + 22) {
+                            mouseX >= x + 6 && mouseX <= x + width &&
+                            mouseY >= offsetY && mouseY <= offsetY + 16) {
 
-                            if (listeningKeybind == kb) {
-                                listeningKeybind = null; // cancel if clicked again
-                            } else {
-                                listeningKeybind = kb;
-                                kb.startListening();
-                            }
+                            listeningKeybind = (listeningKeybind == kb) ? null : kb;
+                            if (listeningKeybind != null) kb.startListening();
                         }
 
-                        offsetY += 22;
+                        offsetY += 17;
                     }
                 }
                 offsetY += 2;
@@ -227,7 +214,7 @@ public class ModulePanel {
     }
 
     // ----------------------------------------------------------------
-    // MOUSE DRAG
+    // MOUSE DRAG & RELEASE
     // ----------------------------------------------------------------
     public void mouseClickMove(int mouseX) {
         if (draggingSlider != null) {
@@ -245,7 +232,7 @@ public class ModulePanel {
     public void keyTyped(char typedChar, int keyCode) {
         if (listeningKeybind != null) {
             if (keyCode == Keyboard.KEY_ESCAPE) {
-                listeningKeybind.setKeyCode(0); // clear bind
+                listeningKeybind.setKeyCode(0);
             } else {
                 listeningKeybind.setKeyCode(keyCode);
             }
