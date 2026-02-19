@@ -36,7 +36,7 @@ public class Rise6ClickGui extends GuiScreen {
         selectedCategory = categories.get(0);
 
         searchBar = new SearchBar();
-         = new (selectedCategory);
+        modulePanel = new ModulePanel(selectedCategory);
     }
 
     // ------------------------------------------------------------
@@ -78,12 +78,12 @@ public class Rise6ClickGui extends GuiScreen {
         // ROUNDED BACKGROUND PANEL
         // ------------------------------------------------------------
         RoundedUtils.drawRoundedRect(
-                guiX - 10,   // x
-                20,          // y
-                300,         // width
-                260,         // height
-                8,           // radius
-                0xCC0F0F0F   // color
+                guiX - 10,
+                20,
+                300,
+                260,
+                8,
+                0xCC0F0F0F
         );
 
         // Search bar (slides with animation)
@@ -118,6 +118,9 @@ public class Rise6ClickGui extends GuiScreen {
             }
             yOffset += 28;
         }
+
+        // Pass guiX + Y offset into ModulePanel
+        int guiX = (int)(130 + (20 * (1 - openAnim)));
 
         searchBar.mouseClicked(mouseX, mouseY, button);
         modulePanel.mouseClicked(guiX, 60, mouseX, mouseY, button);
