@@ -9,7 +9,7 @@ import net.minecraft.client.gui.ScaledResolution;
 import java.util.HashMap;
 import java.util.Map;
 
-public class HUD {
+public class ArraylistHUD {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
 
