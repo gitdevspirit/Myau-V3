@@ -34,7 +34,7 @@ public class ModulePanel {
 
         // Load modules from module manager by category name
         for (Module m : Myau.moduleManager.modules.values()) {
-            if (m.getCategory().equalsIgnoreCase(category.getName())) {
+            if (m.category.equalsIgnoreCase(category.getName())) {
                 modules.add(m);
             }
         }
