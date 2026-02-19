@@ -7,10 +7,7 @@ public abstract class Module {
     protected static final Minecraft mc = Minecraft.getMinecraft();
 
     private final String name;
-    private boolean enabled = false;  // toggled state
-
-    // Animation fields
-    private float animationProgress = 0.0f;  // 0.0 hidden → 1.0 visible
+    private boolean enabled = false;
 
     public Module(String name) {
         this.name = name;
@@ -21,9 +18,7 @@ public abstract class Module {
     }
 
     public void setEnabled(boolean enabled) {
-        if (this.enabled == enabled) return;
         this.enabled = enabled;
-
         if (enabled) {
             onEnable();
         } else {
@@ -35,28 +30,26 @@ public abstract class Module {
         return enabled;
     }
 
-    // Animation update (smooth slide/fade) - call every tick
-    public void updateAnimation() {
-        float target = isEnabled() ? 1.0f : 0.0f;
-        // Manual lerp (no MathHelper.lerp in 1.8.9)
-        animationProgress += (target - animationProgress) * 0.14f;
-        // Clamp manually
-        if (animationProgress < 0.0f) animationProgress = 0.0f;
-        if (animationProgress > 1.0f) animationProgress = 1.0f;
+    protected void onEnable() {
     }
 
-    public float getAnimationProgress() {
-        return animationProgress;
+    protected void onDisable() {
     }
 
-    protected void onEnable() {}
-    protected void onDisable() {}
-    public void onUpdate() {}     // can call updateAnimation() here as fallback
-    public void onRender2D() {}
+    public void onUpdate() {
+    }
+
+    public void onRender2D() {
+    }
 
     public String getName() {
         return name;
     }
 
-    // If needed later: add keybind, hidden, etc.
+    // If your project later needs these (from config/clickgui errors), you can add dummies:
+    // public java.util.List getSettings() { return new java.util.ArrayList(); }
+    // public int getKey() { return 0; }
+    // public void setKey(int key) {}
+    // public boolean isHidden() { return false; }
+    // public void setHidden(boolean hidden) {}
 }
