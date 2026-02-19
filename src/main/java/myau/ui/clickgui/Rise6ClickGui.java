@@ -40,7 +40,7 @@ public class Rise6ClickGui extends GuiScreen {
     }
 
     // ------------------------------------------------------------
-    // BLUR ENABLED HERE (world only)
+    // ENABLE BLUR (world only)
     // ------------------------------------------------------------
     @Override
     public void initGui() {
@@ -64,7 +64,7 @@ public class Rise6ClickGui extends GuiScreen {
         int guiX = (int)(130 + (20 * (1 - openAnim))); // slide from right
         int guiAlpha = (int)(180 * openAnim);           // fade in
 
-        // Fade overlay (darkens blurred world)
+        // Fade overlay
         drawRect(0, 0, sr.getScaledWidth(), sr.getScaledHeight(), (guiAlpha << 24));
 
         // Sidebar
@@ -74,17 +74,29 @@ public class Rise6ClickGui extends GuiScreen {
             yOffset += 28;
         }
 
-        // Search bar
-        searchBar.render(130, 30, mouseX, mouseY);
+        // ------------------------------------------------------------
+        // ROUNDED BACKGROUND PANEL
+        // ------------------------------------------------------------
+        RoundedUtils.drawRoundedRect(
+                guiX - 10,   // x
+                20,          // y
+                300,         // width
+                260,         // height
+                8,           // radius
+                0xCC0F0F0F   // color
+        );
 
-        // Module panel (animated X)
+        // Search bar (slides with animation)
+        searchBar.render(guiX, 30, mouseX, mouseY);
+
+        // Module panel (slides with animation)
         modulePanel.render(guiX, 60, mouseX, mouseY, searchBar.getText());
 
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
 
     // ------------------------------------------------------------
-    // BLUR DISABLED WHEN GUI CLOSES
+    // DISABLE BLUR WHEN GUI CLOSES
     // ------------------------------------------------------------
     @Override
     public void onGuiClosed() {
