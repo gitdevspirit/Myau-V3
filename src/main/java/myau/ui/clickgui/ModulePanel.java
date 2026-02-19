@@ -2,127 +2,167 @@ package myau.ui.clickgui;
 
 import myau.module.Module;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Gui;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ModulePanel {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
 
     private SidebarCategory category;
-    private final List<Module> modules = new ArrayList<>();
 
-    // Scroll
-    private int scrollOffset = 0;
-    private int maxScroll = 0;
-
-    // Layout
-    private final int moduleHeight = 20;
-    private final int spacing = 4;
+    // Animation state per module
+    private final Map<Module, Float> toggleAnim = new HashMap<>();
 
     public ModulePanel(SidebarCategory category) {
-        setCategory(category);
+        this.category = category;
     }
 
     public void setCategory(SidebarCategory category) {
         this.category = category;
-        modules.clear();
-        modules.addAll(category.getModules()); // <-- Correct for your client
     }
 
-    public void render(int x, int y, int mouseX, int mouseY, String searchText) {
+    public void render(int x, int y, int mouseX, int mouseY, String search) {
 
-        // Panel background
-        Gui.drawRect(x, y, x + 300, y + 200, 0xAA111111);
+        int offsetY = y;
 
-        int offsetY = y + 10 - scrollOffset;
-
-        // Render modules
-        for (Module m : modules) {
+        for (Module module : category.getModules()) {
 
             // Search filter
-            if (!searchText.isEmpty() &&
-                !m.getName().toLowerCase().contains(searchText.toLowerCase())) {
-                continue;
+            if (search != null && !search.isEmpty()) {
+                if (!module.getName().toLowerCase().contains(search.toLowerCase())) {
+                    continue;
+                }
             }
 
-            int boxX1 = x + 10;
-            int boxX2 = x + 290;
-            int boxY1 = offsetY;
-            int boxY2 = offsetY + moduleHeight;
+            int width = 120;
+            int height = 18;
 
-            // Module background
-            Gui.drawRect(boxX1, boxY1, boxX2, boxY2, 0xFF1E1E1E);
+            boolean hovered =
+                    mouseX >= x && mouseX <= x + width &&
+                    mouseY >= offsetY && mouseY <= offsetY + height;
 
-            // Hover highlight
-            if (mouseX >= boxX1 && mouseX <= boxX2 &&
-                mouseY >= boxY1 && mouseY <= boxY2) {
-                Gui.drawRect(boxX1, boxY1, boxX2, boxY2, 0x22FFFFFF);
-            }
+            // Background color
+            int bg = hovered ? 0xFF2A2A2A : 0xFF1A1A1A;
+
+            // Rounded module button
+            RoundedUtils.drawRoundedRect(
+                    x,
+                    offsetY,
+                    width,
+                    height,
+                    5,
+                    bg
+            );
 
             // Module name
             mc.fontRendererObj.drawString(
-                    m.getName(),
-                    boxX1 + 5,
-                    boxY1 + 6,
-                    m.isEnabled() ? 0xFF55AAFF : 0xFFFFFFFF
+                    module.getName(),
+                    x + 6,
+                    offsetY + 6,
+                    0xFFFFFFFF
             );
 
-            offsetY += moduleHeight + spacing;
-        }
+            // ------------------------------------------------------------
+            // ANIMATED ROUNDED TOGGLE SWITCH
+            // ------------------------------------------------------------
 
-        // Calculate scroll limit
-        maxScroll = Math.max(0, (offsetY - y - 200));
+            boolean enabled = module.isEnabled();
+
+            // Initialize animation state if missing
+            toggleAnim.putIfAbsent(module, enabled ? 1f : 0f);
+
+            // Smooth animation
+            float anim = toggleAnim.get(module);
+            float target = enabled ? 1f : 0f;
+            anim += (target - anim) * 0.2f; // easing
+            toggleAnim.put(module, anim);
+
+            int toggleX = x + width - 28;
+            int toggleY = offsetY + 4;
+
+            // Background pill color (fade between grey → blue)
+            int offColor = 0xFF555555;
+            int onColor = 0xFF55AAFF;
+
+            int blendedColor = blend(offColor, onColor, anim);
+
+            // Draw pill
+            RoundedUtils.drawRoundedRect(
+                    toggleX,
+                    toggleY,
+                    22,
+                    10,
+                    5,
+                    blendedColor
+            );
+
+            // Knob position (slides smoothly)
+            float knobX = toggleX + 2 + (anim * 10);
+
+            // Knob circle
+            RoundedUtils.drawRoundedRect(
+                    knobX,
+                    toggleY + 1,
+                    8,
+                    8,
+                    4,
+                    0xFFFFFFFF
+            );
+
+            offsetY += height + 4;
+        }
     }
 
     public void mouseClicked(int mouseX, int mouseY, int button) {
 
-        int x = 130;
+        int x = Rise6ClickGuiStatic.guiX; // if you store guiX globally
         int y = 60;
 
-        int offsetY = y + 10 - scrollOffset;
+        int offsetY = y;
 
-        for (Module m : modules) {
+        for (Module module : category.getModules()) {
 
-            int boxX1 = x + 10;
-            int boxX2 = x + 290;
-            int boxY1 = offsetY;
-            int boxY2 = offsetY + moduleHeight;
+            int width = 120;
+            int height = 18;
 
-            if (mouseX >= boxX1 && mouseX <= boxX2 &&
-                mouseY >= boxY1 && mouseY <= boxY2) {
+            boolean hovered =
+                    mouseX >= x && mouseX <= x + width &&
+                    mouseY >= offsetY && mouseY <= offsetY + height;
 
-                if (button == 0) {
-                    // Left click = toggle
-                    m.toggle();
-                }
-
-                if (button == 1) {
-                    // Right click = open settings (future)
-                    // TODO: settings panel
-                }
-
+            if (hovered && button == 0) {
+                module.toggle();
                 return;
             }
 
-            offsetY += moduleHeight + spacing;
+            offsetY += height + 4;
         }
-    }
-
-    public void mouseReleased(int mouseX, int mouseY, int button) {
-        // Reserved for sliders, color pickers, etc.
     }
 
     public void keyTyped(char typedChar, int keyCode) {
-        // Reserved for text input inside module settings
+        // No key handling needed for modules
     }
 
-    public void handleScroll(int mouseX, int mouseY, int wheel) {
-        if (wheel != 0) {
-            scrollOffset -= wheel / 10;
-            scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
-        }
+    // ------------------------------------------------------------
+    // COLOR BLENDING UTILITY
+    // ------------------------------------------------------------
+    private int blend(int col1, int col2, float t) {
+        int a1 = (col1 >> 24) & 0xFF;
+        int r1 = (col1 >> 16) & 0xFF;
+        int g1 = (col1 >> 8) & 0xFF;
+        int b1 = col1 & 0xFF;
+
+        int a2 = (col2 >> 24) & 0xFF;
+        int r2 = (col2 >> 16) & 0xFF;
+        int g2 = (col2 >> 8) & 0xFF;
+        int b2 = col2 & 0xFF;
+
+        int a = (int)(a1 + (a2 - a1) * t);
+        int r = (int)(r1 + (r2 - r1) * t);
+        int g = (int)(g1 + (g2 - g1) * t);
+        int b = (int)(b1 + (b2 - b1) * t);
+
+        return (a << 24) | (r << 16) | (g << 8) | b;
     }
 }
