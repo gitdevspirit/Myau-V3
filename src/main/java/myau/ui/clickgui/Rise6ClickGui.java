@@ -3,6 +3,7 @@ package myau.ui.clickgui;
 import myau.module.Module;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.util.ResourceLocation;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -12,6 +13,7 @@ public class Rise6ClickGui extends GuiScreen {
 
     private final List<SidebarCategory> categories = new ArrayList<>();
     private SidebarCategory selectedCategory;
+
     private float openAnim = 0f;
 
     private SearchBar searchBar;
@@ -37,8 +39,22 @@ public class Rise6ClickGui extends GuiScreen {
         modulePanel = new ModulePanel(selectedCategory);
     }
 
+    // ------------------------------------------------------------
+    // BLUR ENABLED HERE (world only)
+    // ------------------------------------------------------------
+    @Override
+    public void initGui() {
+        super.initGui();
+        mc.entityRenderer.loadShader(new ResourceLocation("shaders/post/blur.json"));
+    }
+
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+
+        // ------------------------------------------------------------
+        // STOP BLUR BEFORE DRAWING GUI (keeps GUI sharp)
+        // ------------------------------------------------------------
+        mc.entityRenderer.stopUseShader();
 
         ScaledResolution sr = new ScaledResolution(mc);
 
@@ -48,7 +64,7 @@ public class Rise6ClickGui extends GuiScreen {
         int guiX = (int)(130 + (20 * (1 - openAnim))); // slide from right
         int guiAlpha = (int)(180 * openAnim);           // fade in
 
-        // Fade overlay
+        // Fade overlay (darkens blurred world)
         drawRect(0, 0, sr.getScaledWidth(), sr.getScaledHeight(), (guiAlpha << 24));
 
         // Sidebar
@@ -65,6 +81,15 @@ public class Rise6ClickGui extends GuiScreen {
         modulePanel.render(guiX, 60, mouseX, mouseY, searchBar.getText());
 
         super.drawScreen(mouseX, mouseY, partialTicks);
+    }
+
+    // ------------------------------------------------------------
+    // BLUR DISABLED WHEN GUI CLOSES
+    // ------------------------------------------------------------
+    @Override
+    public void onGuiClosed() {
+        super.onGuiClosed();
+        mc.entityRenderer.stopUseShader();
     }
 
     @Override
