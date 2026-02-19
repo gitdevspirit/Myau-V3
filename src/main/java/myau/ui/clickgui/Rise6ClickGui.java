@@ -25,7 +25,6 @@ public class Rise6ClickGui extends GuiScreen {
             List<Module> renderModules,
             List<Module> miscModules
     ) {
-
         categories.add(new SidebarCategory("Combat", combatModules));
         categories.add(new SidebarCategory("Movement", movementModules));
         categories.add(new SidebarCategory("Player", playerModules));
@@ -38,31 +37,20 @@ public class Rise6ClickGui extends GuiScreen {
         modulePanel = new ModulePanel(selectedCategory);
     }
 
-    // ------------------------------------------------------------
-    // NO BLUR — macOS ARM64 crashes on blur.json
-    // ------------------------------------------------------------
     @Override
     public void initGui() {
         super.initGui();
-        // Blur disabled for macOS stability
-        // mc.entityRenderer.loadShader(new ResourceLocation("shaders/post/blur.json"));
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
 
-        // ------------------------------------------------------------
-        // DO NOT STOP SHADER — no shader is active
-        // ------------------------------------------------------------
-        // mc.entityRenderer.stopUseShader();
-
         ScaledResolution sr = new ScaledResolution(mc);
 
-        // Smooth opening animation
         openAnim += (1f - openAnim) * 0.15f;
 
-        int guiX = (int)(130 + (20 * (1 - openAnim))); // slide from right
-        int guiAlpha = (int)(180 * openAnim);           // fade in
+        int guiX = (int)(130 + (20 * (1 - openAnim)));
+        int guiAlpha = (int)(180 * openAnim);
 
         // Fade overlay
         drawRect(0, 0, sr.getScaledWidth(), sr.getScaledHeight(), (guiAlpha << 24));
@@ -74,22 +62,13 @@ public class Rise6ClickGui extends GuiScreen {
             yOffset += 28;
         }
 
-        // ------------------------------------------------------------
-        // ROUNDED BACKGROUND PANEL
-        // ------------------------------------------------------------
-        RoundedUtils.drawRoundedRect(
-                guiX - 10,
-                20,
-                300,
-                260,
-                8,
-                0xCC0F0F0F
-        );
+        // Rounded background panel
+        RoundedUtils.drawRoundedRect(guiX - 10, 20, 300, 260, 8, 0xCC0F0F0F);
 
-        // Search bar (slides with animation)
+        // Search bar
         searchBar.render(guiX, 30, mouseX, mouseY);
 
-        // Module panel (slides with animation)
+        // Module panel
         modulePanel.render(guiX, 60, mouseX, mouseY, searchBar.getText());
 
         super.drawScreen(mouseX, mouseY, partialTicks);
@@ -98,8 +77,6 @@ public class Rise6ClickGui extends GuiScreen {
     @Override
     public void onGuiClosed() {
         super.onGuiClosed();
-        // No shader to stop
-        // mc.entityRenderer.stopUseShader();
     }
 
     @Override
@@ -109,7 +86,6 @@ public class Rise6ClickGui extends GuiScreen {
         for (SidebarCategory cat : categories) {
             if (mouseX >= 10 && mouseX <= 110 &&
                 mouseY >= yOffset && mouseY <= yOffset + 22) {
-
                 selectedCategory = cat;
                 modulePanel.setCategory(cat);
                 return;
@@ -121,6 +97,18 @@ public class Rise6ClickGui extends GuiScreen {
 
         searchBar.mouseClicked(mouseX, mouseY, button);
         modulePanel.mouseClicked(guiX, 60, mouseX, mouseY, button);
+    }
+
+    // ✅ NEW — forwards drag events to slider
+    @Override
+    public void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
+        modulePanel.mouseClickMove(mouseX);
+    }
+
+    // ✅ NEW — releases slider drag
+    @Override
+    protected void mouseReleased(int mouseX, int mouseY, int state) {
+        modulePanel.mouseReleased();
     }
 
     @Override
