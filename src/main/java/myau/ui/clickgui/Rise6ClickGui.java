@@ -3,7 +3,6 @@ package myau.ui.clickgui;
 import myau.module.Module;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.ScaledResolution;
-import net.minecraft.util.ResourceLocation;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -40,21 +39,22 @@ public class Rise6ClickGui extends GuiScreen {
     }
 
     // ------------------------------------------------------------
-    // ENABLE BLUR (world only)
+    // NO BLUR — macOS ARM64 crashes on blur.json
     // ------------------------------------------------------------
     @Override
     public void initGui() {
         super.initGui();
-        mc.entityRenderer.loadShader(new ResourceLocation("shaders/post/blur.json"));
+        // Blur disabled for macOS stability
+        // mc.entityRenderer.loadShader(new ResourceLocation("shaders/post/blur.json"));
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
 
         // ------------------------------------------------------------
-        // STOP BLUR BEFORE DRAWING GUI (keeps GUI sharp)
+        // DO NOT STOP SHADER — no shader is active
         // ------------------------------------------------------------
-        mc.entityRenderer.stopUseShader();
+        // mc.entityRenderer.stopUseShader();
 
         ScaledResolution sr = new ScaledResolution(mc);
 
@@ -95,13 +95,11 @@ public class Rise6ClickGui extends GuiScreen {
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
 
-    // ------------------------------------------------------------
-    // DISABLE BLUR WHEN GUI CLOSES
-    // ------------------------------------------------------------
     @Override
     public void onGuiClosed() {
         super.onGuiClosed();
-        mc.entityRenderer.stopUseShader();
+        // No shader to stop
+        // mc.entityRenderer.stopUseShader();
     }
 
     @Override
@@ -119,7 +117,6 @@ public class Rise6ClickGui extends GuiScreen {
             yOffset += 28;
         }
 
-        // Pass guiX + Y offset into ModulePanel
         int guiX = (int)(130 + (20 * (1 - openAnim)));
 
         searchBar.mouseClicked(mouseX, mouseY, button);
