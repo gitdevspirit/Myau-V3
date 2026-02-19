@@ -4,6 +4,7 @@ import myau.config.GuiConfig;
 import myau.module.Module;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.ScaledResolution;
+import org.lwjgl.opengl.GL11;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -18,6 +19,9 @@ public class Rise6ClickGui extends GuiScreen {
 
     private SearchBar searchBar;
     private ModulePanel modulePanel;
+    private ConfigPanel configPanel;
+
+    private boolean showConfigs = false;
 
     // ----------------------------------------------------------------
     // DRAG STATE
@@ -32,10 +36,7 @@ public class Rise6ClickGui extends GuiScreen {
     private static final int SIDEBAR_WIDTH   = 120;
     private static final int PANEL_WIDTH     = 220;
     private static final int DRAG_BAR_HEIGHT = 16;
-    private static final int GAP             = 0; // no gap, they're joined
-
-    // Total combined width
-    private static final int TOTAL_WIDTH = SIDEBAR_WIDTH + PANEL_WIDTH;
+    private static final int TOTAL_WIDTH     = SIDEBAR_WIDTH + PANEL_WIDTH;
 
     public Rise6ClickGui(
             List<Module> combatModules,
@@ -54,6 +55,7 @@ public class Rise6ClickGui extends GuiScreen {
 
         searchBar   = new SearchBar();
         modulePanel = new ModulePanel(selectedCategory);
+        configPanel = new ConfigPanel();
 
         GuiConfig.load();
         posX = GuiConfig.guiX;
@@ -73,51 +75,79 @@ public class Rise6ClickGui extends GuiScreen {
         openAnim += (1f - openAnim) * 0.15f;
         int guiAlpha = (int)(150 * openAnim);
 
-        // Subtle dark overlay
+        // Dark screen overlay
         drawRect(0, 0, sr.getScaledWidth(), sr.getScaledHeight(), (guiAlpha << 24));
 
-        int panelHeight = Math.max(modulePanel.getContentHeight() + 60, categories.size() * 28 + 20);
+        // ----------------------------------------------------------------
+        // CALCULATE HEIGHTS
+        // ----------------------------------------------------------------
+        int categoryHeight  = categories.size() * 24 + 28;
+        int configBtnY      = posY + categoryHeight + 8;
+        int configPanelH    = showConfigs ? configPanel.getContentHeight() : 0;
+        int sidebarHeight   = categoryHeight + 8 + 16 + configPanelH + 8;
+        int panelHeight     = Math.max(modulePanel.getContentHeight() + 50, sidebarHeight);
 
         // ----------------------------------------------------------------
-        // OUTER BACKGROUND — one big rounded rect for the whole GUI
+        // OUTER BACKGROUND — one big rounded rect
         // ----------------------------------------------------------------
         RoundedUtils.drawRoundedRect(posX, posY, TOTAL_WIDTH, panelHeight, 10, 0xF0080808);
 
         // ----------------------------------------------------------------
-        // SIDEBAR — dark section on the left
+        // SIDEBAR
         // ----------------------------------------------------------------
-        // Slightly lighter shade to distinguish sidebar from module panel
         RoundedUtils.drawRoundedRect(posX, posY, SIDEBAR_WIDTH, panelHeight, 10, 0xF0111111);
 
-        // Title at top of sidebar
+        // Thin divider between sidebar and panel
+        drawRect(posX + SIDEBAR_WIDTH, posY + 5,
+                 posX + SIDEBAR_WIDTH + 1, posY + panelHeight - 5, 0xFF222222);
+
+        // Title
+        GL11.glColor4f(1f, 1f, 1f, 1f);
         mc.fontRendererObj.drawString("§b§lMyau", posX + 10, posY + 8, 0xFFFFFFFF);
 
-        // Divider line between sidebar and panel
-        drawRect(posX + SIDEBAR_WIDTH, posY + 5, posX + SIDEBAR_WIDTH + 1, posY + panelHeight - 5, 0xFF222222);
-
-        // Category entries
+        // Categories
         int yOffset = posY + 28;
         for (SidebarCategory cat : categories) {
             boolean selected = selectedCategory == cat;
+            boolean hovered  = mouseX >= posX + 6 && mouseX <= posX + SIDEBAR_WIDTH - 6 &&
+                               mouseY >= yOffset - 2 && mouseY <= yOffset + 18;
 
-            // Blue highlight for selected category
             if (selected) {
                 RoundedUtils.drawRoundedRect(posX + 6, yOffset - 2, SIDEBAR_WIDTH - 12, 20, 4, 0xFF1A3A5C);
-                // Blue left accent bar
                 RoundedUtils.drawRoundedRect(posX + 4, yOffset, 3, 14, 1, 0xFF55AAFF);
-            }
-
-            // Hover highlight
-            boolean hovered = mouseX >= posX + 6 && mouseX <= posX + SIDEBAR_WIDTH - 6 &&
-                               mouseY >= yOffset - 2 && mouseY <= yOffset + 18;
-            if (hovered && !selected) {
+            } else if (hovered) {
                 RoundedUtils.drawRoundedRect(posX + 6, yOffset - 2, SIDEBAR_WIDTH - 12, 20, 4, 0xFF1A1A1A);
             }
 
             int textColor = selected ? 0xFF55AAFF : (hovered ? 0xFFCCCCCC : 0xFF888888);
+            GL11.glColor4f(1f, 1f, 1f, 1f);
             mc.fontRendererObj.drawString(cat.getName(), posX + 14, yOffset + 3, textColor);
 
             yOffset += 24;
+        }
+
+        // ----------------------------------------------------------------
+        // CONFIGS BUTTON
+        // ----------------------------------------------------------------
+        boolean configHovered = mouseX >= posX + 6 && mouseX <= posX + SIDEBAR_WIDTH - 6 &&
+                                mouseY >= configBtnY && mouseY <= configBtnY + 16;
+
+        RoundedUtils.drawRoundedRect(posX + 6, configBtnY, SIDEBAR_WIDTH - 12, 16, 4,
+                showConfigs ? 0xFF1A3A5C : (configHovered ? 0xFF1A1A1A : 0xFF161616));
+
+        if (showConfigs) {
+            RoundedUtils.drawRoundedRect(posX + 4, configBtnY + 1, 3, 12, 1, 0xFF55AAFF);
+        }
+
+        GL11.glColor4f(1f, 1f, 1f, 1f);
+        mc.fontRendererObj.drawString(
+                showConfigs ? "§bConfigs" : "§7Configs",
+                posX + 14, configBtnY + 4,
+                showConfigs ? 0xFF55AAFF : (configHovered ? 0xFFCCCCCC : 0xFF888888));
+
+        // Config panel (expanded)
+        if (showConfigs) {
+            configPanel.render(posX + 6, configBtnY + 20, mouseX, mouseY);
         }
 
         // ----------------------------------------------------------------
@@ -148,7 +178,7 @@ public class Rise6ClickGui extends GuiScreen {
     @Override
     protected void mouseClicked(int mouseX, int mouseY, int button) throws IOException {
 
-        // Drag — clicking anywhere on the top bar of the whole GUI
+        // Drag — top bar of whole GUI
         if (button == 0 &&
             mouseX >= posX && mouseX <= posX + TOTAL_WIDTH &&
             mouseY >= posY && mouseY <= posY + DRAG_BAR_HEIGHT) {
@@ -159,7 +189,7 @@ public class Rise6ClickGui extends GuiScreen {
             return;
         }
 
-        // Sidebar category clicks
+        // Category clicks
         int yOffset = posY + 28;
         for (SidebarCategory cat : categories) {
             if (mouseX >= posX + 6 && mouseX <= posX + SIDEBAR_WIDTH - 6 &&
@@ -171,6 +201,24 @@ public class Rise6ClickGui extends GuiScreen {
             yOffset += 24;
         }
 
+        // Configs button click
+        int categoryHeight = categories.size() * 24 + 28;
+        int configBtnY     = posY + categoryHeight + 8;
+
+        if (button == 0 &&
+            mouseX >= posX + 6 && mouseX <= posX + SIDEBAR_WIDTH - 6 &&
+            mouseY >= configBtnY && mouseY <= configBtnY + 16) {
+            showConfigs = !showConfigs;
+            if (showConfigs) configPanel.refresh();
+            return;
+        }
+
+        // Config panel clicks
+        if (showConfigs) {
+            configPanel.mouseClicked(posX + 6, configBtnY + 20, mouseX, mouseY, button);
+        }
+
+        // Search + module panel clicks
         int panelX = posX + SIDEBAR_WIDTH + 8;
         searchBar.mouseClicked(mouseX, mouseY, button);
         modulePanel.mouseClicked(panelX, posY + 38, mouseX, mouseY, button);
@@ -180,8 +228,8 @@ public class Rise6ClickGui extends GuiScreen {
     public void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
         if (dragging) {
             ScaledResolution sr = new ScaledResolution(mc);
-            posX = Math.max(0, Math.min(sr.getScaledWidth() - TOTAL_WIDTH, mouseX - dragOffsetX));
-            posY = Math.max(0, Math.min(sr.getScaledHeight() - 100,        mouseY - dragOffsetY));
+            posX = Math.max(0, Math.min(sr.getScaledWidth()  - TOTAL_WIDTH, mouseX - dragOffsetX));
+            posY = Math.max(0, Math.min(sr.getScaledHeight() - 100,         mouseY - dragOffsetY));
         } else {
             modulePanel.mouseClickMove(mouseX);
         }
@@ -191,6 +239,15 @@ public class Rise6ClickGui extends GuiScreen {
     protected void mouseReleased(int mouseX, int mouseY, int state) {
         dragging = false;
         modulePanel.mouseReleased();
+    }
+
+    @Override
+    public void handleMouseInput() throws IOException {
+        super.handleMouseInput();
+        int delta = org.lwjgl.input.Mouse.getEventDWheel();
+        if (delta != 0) {
+            modulePanel.handleScroll(delta);
+        }
     }
 
     @Override
