@@ -2,6 +2,7 @@ package myau.ui.hud;
 
 import myau.Myau;
 import myau.module.Module;
+import myau.module.modules.HUD;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
 
@@ -15,16 +16,17 @@ public class ArraylistHUD {
     public void render() {
         ScaledResolution sr = new ScaledResolution(mc);
 
-        // Correct module stream
         Myau.moduleManager.modules.values().stream()
                 .filter(Module::isEnabled)
-                .sorted(Comparator.comparing(m -> mc.fontRendererObj.getStringWidth(m.getName())).reversed())
+                .sorted(Comparator.comparing(
+                        (Module m) -> mc.fontRendererObj.getStringWidth(m.getName())
+                ).reversed())
                 .forEach(module -> {
-                    String name = module.getName();
 
-                    // HUD color
-                    Color color = Myau.moduleManager.getModule(myau.module.modules.HUD.class)
-                            .getColor(System.currentTimeMillis());
+                    HUD hud = (HUD) Myau.moduleManager.getModule(HUD.class);
+                    Color color = hud.getColor(System.currentTimeMillis());
+
+                    String name = module.getName();
 
                     int x = sr.getScaledWidth() - mc.fontRendererObj.getStringWidth(name) - 4;
                     int y = 10 + (mc.fontRendererObj.FONT_HEIGHT + 2) *
