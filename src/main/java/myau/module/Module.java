@@ -1,58 +1,115 @@
 package myau.module;
 
-import net.minecraft.client.Minecraft;
+import java.util.ArrayList;
+import java.util.List;
+import myau.Myau;
+import myau.module.modules.HUD;
+import myau.util.KeyBindUtil;
 
 public abstract class Module {
+   protected final String name;
+   protected final boolean defaultEnabled;
+   protected final int defaultKey;
+   protected final boolean defaultHidden;
+   protected boolean enabled;
+   protected int key;
+   protected boolean hidden;
+   protected final List<Setting> settings;
 
-    protected static final Minecraft mc = Minecraft.getMinecraft();
+   public Module(String name, boolean enabled) {
+      this(name, enabled, false);
+   }
 
-    private final String name;
-    private boolean enabled = false;
+   public Module(String name, boolean enabled, boolean hidden) {
+      this.settings = new ArrayList();
+      this.name = name;
+      this.enabled = this.defaultEnabled = enabled;
+      this.key = this.defaultKey = 0;
+      this.hidden = this.defaultHidden = hidden;
+   }
 
-    public Module(String name) {
-        this.name = name;
-    }
+   protected <T extends Setting> T register(T setting) {
+      this.settings.add(setting);
+      return setting;
+   }
 
-    public void toggle() {
-        setEnabled(!isEnabled());
-    }
+   public List<Setting> getSettings() {
+      return this.settings;
+   }
 
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
-        if (enabled) {
-            onEnable();
-        } else {
-            onDisable();
-        }
-    }
+   public String getName() {
+      return this.name;
+   }
 
-    public boolean isEnabled() {
-        return enabled;
-    }
+   public String formatModule() {
+      return String.format("%s%s &r(%s&r)", this.key == 0 ? "" : String.format("&l[%s] &r", KeyBindUtil.getKeyName(this.key)), this.name, this.enabled ? "&a&lON" : "&c&lOFF");
+   }
 
-    protected void onEnable() {}
-    protected void onDisable() {}
-    public void onUpdate() {}
-    public void onRender2D() {}
+   public String[] getSuffix() {
+      return new String[0];
+   }
 
-    public String getName() {
-        return name;
-    }
+   public boolean isEnabled() {
+      return this.enabled;
+   }
 
-    // Dummy methods to stop config/clickgui errors (add real impl later)
-    public java.util.List getSettings() {
-        return new java.util.ArrayList();
-    }
+   public void setEnabled(boolean enabled) {
+      if (this.enabled != enabled) {
+         this.enabled = enabled;
+         if (enabled) {
+            this.onEnabled();
+         } else {
+            this.onDisabled();
+         }
+      }
 
-    public int getKey() {
-        return 0;
-    }
+   }
 
-    public void setKey(int key) {}
+   public boolean toggle() {
+      boolean enabled = !this.enabled;
+      this.setEnabled(enabled);
+      if (this.enabled == enabled) {
+         if ((Boolean)((HUD)Myau.moduleManager.modules.get(HUD.class)).toggleSound.getValue()) {
+            Myau.moduleManager.playSound();
+         }
 
-    public boolean isHidden() {
-        return false;
-    }
+         try {
+            if (Myau.notificationManager != null) {
+               String action = this.enabled ? "was toggled successfully" : "was untoggled successfully";
+               int color = this.enabled ? '\uff00' : 16711680;
+               Myau.notificationManager.add(this.getName() + " " + action, color);
+            }
+         } catch (Exception var4) {
+         }
 
-    public void setHidden(boolean hidden) {}
+         return true;
+      } else {
+         return false;
+      }
+   }
+
+   public int getKey() {
+      return this.key;
+   }
+
+   public void setKey(int integer) {
+      this.key = integer;
+   }
+
+   public boolean isHidden() {
+      return this.hidden;
+   }
+
+   public void setHidden(boolean boolean1) {
+      this.hidden = boolean1;
+   }
+
+   public void onEnabled() {
+   }
+
+   public void onDisabled() {
+   }
+
+   public void verifyValue(String string) {
+   }
 }
