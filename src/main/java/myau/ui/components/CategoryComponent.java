@@ -207,4 +207,3 @@ public class CategoryComponent {
         GuiUtils.drawShadow(x, y, w, h, 12);
     }
 }
-// force rebuild
