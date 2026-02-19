@@ -1,6 +1,7 @@
 package myau.ui.clickgui;
 
 import myau.module.BooleanSetting;
+import myau.module.DropdownSetting;
 import myau.module.KeybindSetting;
 import myau.module.Module;
 import myau.module.Setting;
@@ -45,9 +46,6 @@ public class ModulePanel {
         this.visibleHeight = Math.max(50, h);
     }
 
-    // ----------------------------------------------------------------
-    // SCROLL
-    // ----------------------------------------------------------------
     public void handleScroll(int delta) {
         int maxScroll = Math.max(0, getContentHeight() - visibleHeight);
         scrollOffset -= delta / 5;
@@ -72,7 +70,6 @@ public class ModulePanel {
             int width  = 160;
             int height = 16;
 
-            // Skip if completely out of visible area
             if (offsetY + height < clipTop || offsetY > clipBottom) {
                 offsetY += height + 1;
                 if (expandedModule == module) offsetY += getSettingsHeight(module);
@@ -83,7 +80,6 @@ public class ModulePanel {
                     mouseX >= x && mouseX <= x + width &&
                     mouseY >= offsetY && mouseY <= offsetY + height;
 
-            // Row background
             int rowColor;
             if (module.isEnabled())  rowColor = 0xFF0D2137;
             else if (hovered)        rowColor = 0xFF2A2A2A;
@@ -98,7 +94,6 @@ public class ModulePanel {
             GL11.glColor4f(1f, 1f, 1f, 1f);
             mc.fontRendererObj.drawString(module.getName(), x + 7, offsetY + 5, nameColor);
 
-            // Toggle animation
             boolean enabled = module.isEnabled();
             toggleAnim.putIfAbsent(module, enabled ? 1f : 0f);
             float anim = toggleAnim.get(module);
@@ -130,7 +125,6 @@ public class ModulePanel {
 
                         RoundedUtils.drawRoundedRect(x + 6, offsetY, width - 6, rowH, 3, 0xFF202020);
 
-                        // Text first
                         GL11.glColor4f(1f, 1f, 1f, 1f);
                         mc.fontRendererObj.drawString(setting.getName(), x + 10, offsetY + 4, 0xFF999999);
 
@@ -140,7 +134,6 @@ public class ModulePanel {
                                 x + width - mc.fontRendererObj.getStringWidth(valStr) - 8,
                                 offsetY + 4, 0xFF55AAFF);
 
-                        // Bar after text
                         int barX = x + 10;
                         int barY = offsetY + 17;
                         int barW = width - 20;
@@ -156,6 +149,26 @@ public class ModulePanel {
                         }
 
                         offsetY += rowH + 2;
+
+                    } else if (setting instanceof DropdownSetting) {
+                        DropdownSetting dropdown = (DropdownSetting) setting;
+                        int rowH = 16;
+
+                        RoundedUtils.drawRoundedRect(x + 6, offsetY, width - 6, rowH, 3, 0xFF202020);
+
+                        // Setting name on left
+                        GL11.glColor4f(1f, 1f, 1f, 1f);
+                        mc.fontRendererObj.drawString(setting.getName(), x + 10, offsetY + 4, 0xFF999999);
+
+                        // Current value + arrows on right
+                        String val = "< " + dropdown.getValue() + " >";
+                        int valW = mc.fontRendererObj.getStringWidth(val);
+                        GL11.glColor4f(1f, 1f, 1f, 1f);
+                        mc.fontRendererObj.drawString(val,
+                                x + width - valW - 8,
+                                offsetY + 4, 0xFF55AAFF);
+
+                        offsetY += rowH + 1;
 
                     } else if (setting instanceof BooleanSetting) {
                         BooleanSetting bool = (BooleanSetting) setting;
@@ -260,6 +273,22 @@ public class ModulePanel {
 
                         offsetY += 30;
 
+                    } else if (setting instanceof DropdownSetting) {
+                        DropdownSetting dropdown = (DropdownSetting) setting;
+
+                        if (mouseX >= x + 6 && mouseX <= x + width &&
+                            mouseY >= offsetY && mouseY <= offsetY + 16) {
+                            if (button == 0) {
+                                // Left click = next
+                                dropdown.next();
+                            } else if (button == 1) {
+                                // Right click = prev
+                                dropdown.prev();
+                            }
+                        }
+
+                        offsetY += 17;
+
                     } else if (setting instanceof BooleanSetting) {
                         BooleanSetting bool = (BooleanSetting) setting;
 
@@ -330,6 +359,7 @@ public class ModulePanel {
         int h = 0;
         for (Setting setting : module.getSettings()) {
             if (setting instanceof SliderSetting)        h += 30;
+            else if (setting instanceof DropdownSetting) h += 17;
             else if (setting instanceof BooleanSetting)  h += 17;
             else if (setting instanceof KeybindSetting)  h += 17;
         }
