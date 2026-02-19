@@ -117,7 +117,8 @@ public class ModulePanel {
 
     public void mouseClicked(int mouseX, int mouseY, int button) {
 
-        int x = Rise6ClickGuiStatic.guiX; // if you store guiX globally
+        // These should match the values passed from Rise6ClickGui.render(...)
+        int x = Rise6ClickGui.LAST_GUI_X; // or pass x into this method instead
         int y = 60;
 
         int offsetY = y;
