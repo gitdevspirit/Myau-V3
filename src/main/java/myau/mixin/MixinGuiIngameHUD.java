@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(GuiIngame.class)
 public class MixinGuiIngameHUD {
 
-    private final HUD hud = new HUD();
+    private final ArraylistHUD hud = new HUD();
 
     @Inject(method = "renderGameOverlay", at = @At("RETURN"))
     private void renderHUD(float partialTicks, CallbackInfo ci) {
