@@ -1,17 +1,16 @@
 package myau.module.modules;
 
-import com.google.common.base.CaseFormat;
 import myau.Myau;
 import myau.enums.BlinkModules;
 import myau.event.EventTarget;
 import myau.event.types.Priority;
 import myau.events.KeyEvent;
 import myau.events.PlayerUpdateEvent;
+import myau.module.DropdownSetting;
 import myau.module.Module;
+import myau.module.SliderSetting;
 import myau.util.PlayerUtil;
 import myau.util.RandomUtil;
-import myau.property.properties.FloatProperty;
-import myau.property.properties.ModeProperty;
 import net.minecraft.client.Minecraft;
 import net.minecraft.item.ItemEnderPearl;
 import net.minecraft.item.ItemStack;
@@ -20,104 +19,72 @@ import net.minecraft.util.AxisAlignedBB;
 
 public class AntiVoid extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
-    private boolean isInVoid = false;
+    private boolean isInVoid  = false;
     private boolean wasInVoid = false;
     private double[] lastSafePosition = null;
-    public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"BLINK"});
-    public final FloatProperty distance = new FloatProperty("distance", 5.0F, 0.0F, 16.0F);
 
-    private void resetBlink() {
-        Myau.blinkManager.setBlinkState(false, BlinkModules.ANTI_VOID);
-        this.lastSafePosition = null;
-    }
-
-    private boolean canUseAntiVoid() {
-        LongJump longJump = (LongJump) Myau.moduleManager.modules.get(LongJump.class);
-        return !longJump.isJumping();
-    }
+    public final DropdownSetting mode     = new DropdownSetting("Mode",     0, "BLINK");
+    public final SliderSetting   distance = new SliderSetting("Distance", 5.0, 0.0, 16.0, 0.5);
 
     public AntiVoid() {
         super("AntiVoid", false);
+        register(mode);
+        register(distance);
+    }
+
+    private void resetBlink() {
+        Myau.blinkManager.setBlinkState(false, BlinkModules.ANTI_VOID);
+        lastSafePosition = null;
+    }
+
+    private boolean canUseAntiVoid() {
+        LongJump lj = (LongJump) Myau.moduleManager.modules.get(LongJump.class);
+        return !lj.isJumping();
     }
 
     @EventTarget(Priority.LOWEST)
     public void onUpdate(PlayerUpdateEvent event) {
-        if (this.isEnabled()) {
-            this.isInVoid = !mc.thePlayer.capabilities.allowFlying && PlayerUtil.isInWater();
-            if (this.mode.getValue() == 0) {
-                if (!this.isInVoid) {
-                    this.resetBlink();
+        if (isEnabled()) {
+            isInVoid = !mc.thePlayer.capabilities.allowFlying && PlayerUtil.isInWater();
+            if (mode.getIndex() == 0) {
+                if (!isInVoid) resetBlink();
+                if (lastSafePosition != null) {
+                    float sub = mc.thePlayer.width / 2.0F;
+                    float h   = mc.thePlayer.height;
+                    if (PlayerUtil.checkInWater(new AxisAlignedBB(
+                            lastSafePosition[0] - sub, lastSafePosition[1], lastSafePosition[2] - sub,
+                            lastSafePosition[0] + sub, lastSafePosition[1] + h, lastSafePosition[2] + sub)))
+                        resetBlink();
                 }
-                if (this.lastSafePosition != null) {
-                    float subWidth = mc.thePlayer.width / 2.0F;
-                    float height = mc.thePlayer.height;
-                    if (PlayerUtil.checkInWater(
-                            new AxisAlignedBB(
-                                    this.lastSafePosition[0] - (double) subWidth,
-                                    this.lastSafePosition[1],
-                                    this.lastSafePosition[2] - (double) subWidth,
-                                    this.lastSafePosition[0] + (double) subWidth,
-                                    this.lastSafePosition[1] + (double) height,
-                                    this.lastSafePosition[2] + (double) subWidth
-                            )
-                    )) {
-                        this.resetBlink();
-                    }
-                }
-                if (!this.wasInVoid && this.isInVoid && this.canUseAntiVoid()) {
+                if (!wasInVoid && isInVoid && canUseAntiVoid()) {
                     Myau.blinkManager.setBlinkState(false, BlinkModules.AUTO_BLOCK);
-                    if (Myau.blinkManager.setBlinkState(true, BlinkModules.ANTI_VOID)) {
-                        this.lastSafePosition = new double[]{mc.thePlayer.prevPosX, mc.thePlayer.prevPosY, mc.thePlayer.prevPosZ};
-                    }
+                    if (Myau.blinkManager.setBlinkState(true, BlinkModules.ANTI_VOID))
+                        lastSafePosition = new double[]{mc.thePlayer.prevPosX, mc.thePlayer.prevPosY, mc.thePlayer.prevPosZ};
                 }
                 if (Myau.blinkManager.getBlinkingModule() == BlinkModules.ANTI_VOID
-                        && this.lastSafePosition != null
-                        && this.lastSafePosition[1] - (double) this.distance.getValue().floatValue() > mc.thePlayer.posY) {
-                    Myau.blinkManager
-                            .blinkedPackets
-                            .offerFirst(
-                                    new C04PacketPlayerPosition(
-                                            this.lastSafePosition[0], this.lastSafePosition[1] - RandomUtil.nextDouble(10.0, 20.0), this.lastSafePosition[2], false
-                                    )
-                            );
-                    this.resetBlink();
+                        && lastSafePosition != null
+                        && lastSafePosition[1] - distance.getValue() > mc.thePlayer.posY) {
+                    Myau.blinkManager.blinkedPackets.offerFirst(
+                            new C04PacketPlayerPosition(
+                                    lastSafePosition[0],
+                                    lastSafePosition[1] - RandomUtil.nextDouble(10.0, 20.0),
+                                    lastSafePosition[2], false));
+                    resetBlink();
                 }
             }
-            this.wasInVoid = this.isInVoid;
+            wasInVoid = isInVoid;
         }
     }
 
     @EventTarget
     public void onKey(KeyEvent event) {
         if (event.getKey() == mc.gameSettings.keyBindUseItem.getKeyCode()) {
-            ItemStack currentItem = mc.thePlayer.inventory.getCurrentItem();
-            if (currentItem != null && currentItem.getItem() instanceof ItemEnderPearl) {
-                this.resetBlink();
-            }
+            ItemStack item = mc.thePlayer.inventory.getCurrentItem();
+            if (item != null && item.getItem() instanceof ItemEnderPearl) resetBlink();
         }
     }
 
-    @Override
-    public void onEnabled() {
-        this.isInVoid = false;
-        this.wasInVoid = false;
-        this.resetBlink();
-    }
-
-    @Override
-    public void onDisabled() {
-        Myau.blinkManager.setBlinkState(false, BlinkModules.ANTI_VOID);
-    }
-
-    @Override
-    public void verifyValue(String mode) {
-        if (this.isEnabled()) {
-            this.onDisabled();
-        }
-    }
-
-    @Override
-    public String[] getSuffix() {
-        return new String[]{CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, this.mode.getModeString())};
-    }
+    @Override public void onEnabled()  { isInVoid = false; wasInVoid = false; resetBlink(); }
+    @Override public void onDisabled() { Myau.blinkManager.setBlinkState(false, BlinkModules.ANTI_VOID); }
+    @Override public String[] getSuffix() { return new String[]{mode.getValue()}; }
 }
