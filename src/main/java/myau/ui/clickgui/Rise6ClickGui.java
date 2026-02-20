@@ -163,11 +163,12 @@ public class Rise6ClickGui extends GuiScreen {
 
     @Override
 public void handleMouseInput() throws IOException {
-    super.handleMouseInput();
+    // Read wheel BEFORE super consumes the event
     int delta = Mouse.getEventDWheel();
     if (delta != 0) {
         modulePanel.handleScroll(delta);
     }
+    super.handleMouseInput();
 }
 
     @Override
