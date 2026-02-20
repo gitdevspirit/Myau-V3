@@ -166,14 +166,7 @@ public void handleMouseInput() throws IOException {
     super.handleMouseInput();
     int delta = Mouse.getEventDWheel();
     if (delta != 0) {
-        int mouseX = Mouse.getEventX() * this.width / mc.displayWidth;
-        int mouseY = this.height - Mouse.getEventY() * this.height / mc.displayHeight - 1;
-        int panelX = posX + SIDEBAR_WIDTH + 8;
-        // Only scroll if mouse is over the module panel area
-        if (mouseX >= panelX && mouseX <= posX + TOTAL_WIDTH &&
-            mouseY >= posY && mouseY <= posY + getPanelHeight()) {
-            modulePanel.handleScroll(delta);
-        }
+        modulePanel.handleScroll(delta);
     }
 }
 
