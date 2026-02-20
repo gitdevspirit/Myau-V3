@@ -1,6 +1,6 @@
 package myau.module.modules;
 
-import myau.module.Module;  // This is your base class – keep as-is
+import myau.module.Module;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
@@ -20,36 +20,33 @@ public class BackTrack extends Module {
     private EntityLivingBase target = null;
 
     public BackTrack() {
-        // Constructor – adjust parameters to match your actual Module base class.
-        // Many simple clients use: super("Name", "Description")
-        // If your Module has a category param, change to the correct one (e.g. ModuleCategory.COMBAT)
-        // For now: assuming no category or it's optional/handled elsewhere
-        super("BackTrack", "Tracks real server positions for better reach/backtrack");
-        // If category is required, find the correct enum/class name in your project (search for "COMBAT" in other modules)
-        // Example alternatives you might try:
-        // super("BackTrack", "Tracks...", ModuleCategory.COMBAT);
-        // super("BackTrack", Category.COMBAT, "Tracks...");
+        // Matches your Module constructor: name + enabled (default off)
+        // If you want it enabled by default: super("BackTrack", true);
+        // If hidden: super("BackTrack", false, true);
+        super("BackTrack", false);
     }
 
-    // Your packet handler – call this from wherever packets are processed (e.g. MixinNetworkManager or EventPacket)
+    // Packet handler – call from your event system / Mixin
     public void onPacket(Packet<?> packet) {
-        if (!isEnabled()) return;  // Use your actual isEnabled() method name
+        if (!isEnabled()) return;
 
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.thePlayer == null || mc.theWorld == null) return;
 
         if (packet instanceof S14PacketEntity) {
             S14PacketEntity p = (S14PacketEntity) packet;
-            Entity e = mc.theWorld.getEntityByID(p.getEntityId());  // Safer lookup
+            // In 1.8.9 MCP: use func_149451_c() for entity ID
+            Entity e = mc.theWorld.getEntityByID(p.func_149451_c());
 
             if (e != null) {
-                int id = e.getEntityId();
+                int id = e.getEntityId();  // or p.func_149451_c()
                 Vec3 pos = new Vec3(e.posX, e.posY, e.posZ);
 
+                // Delta moves: func_149062_c() = deltaX, etc.
                 pos = pos.addVector(
-                        (double) p.getX() / 32.0,
-                        (double) p.getY() / 32.0,
-                        (double) p.getZ() / 32.0
+                        (double) p.func_149062_c() / 32.0,
+                        (double) p.func_149061_d() / 32.0,
+                        (double) p.func_149064_e() / 32.0
                 );
 
                 realPositions.put(id, pos);
@@ -57,25 +54,26 @@ public class BackTrack extends Module {
         } else if (packet instanceof S18PacketEntityTeleport) {
             S18PacketEntityTeleport p = (S18PacketEntityTeleport) packet;
 
+            // Teleport: func_149451_c() = entityId, func_149449_d() = x, etc.
             realPositions.put(
-                    p.getEntityId(),
+                    p.func_149451_c(),
                     new Vec3(
-                            (double) p.getX() / 32.0,
-                            (double) p.getY() / 32.0,
-                            (double) p.getZ() / 32.0
+                            (double) p.func_149449_d() / 32.0,
+                            (double) p.func_149448_e() / 32.0,
+                            (double) p.func_149446_f() / 32.0
                     )
             );
         }
     }
 
-    // Update/logic method – hook this to your update event if needed
+    // Update logic (hook to your tick/update event)
     public void onUpdate() {
         if (!isEnabled()) return;
 
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.thePlayer == null) return;
 
-        // Simple target finder example (replace with your actual target logic, e.g. from KillAura)
+        // Example closest target finder (improve with your actual combat target selector)
         this.target = null;
         double closest = Double.MAX_VALUE;
 
@@ -103,19 +101,19 @@ public class BackTrack extends Module {
                     this.lastRealPos = real;
                 }
 
-                // Use distReal vs distCurrent for backtrack logic (e.g. extended reach check)
+                // Example: backtrack if server pos differs significantly
+                // if (distReal > distCurrent + 0.5) { ... extend hit range or log ... }
             }
         }
     }
 
-    // Cleanup – no @Override, no super call (since base likely doesn't have onDisable())
-    public void onDisable() {
+    // No @Override needed – your Module has onDisabled() as hook
+    public void onDisabled() {
         realPositions.clear();
         lastRealPos = null;
         target = null;
-        // If your framework has onDisable logic, add it here without super
     }
 
-    // Optional: if your Module base has onEnable(), add it similarly
-    // public void onEnable() { ... }
+    // Optional: onEnabled() if you need init logic
+    // public void onEnabled() { ... }
 }
