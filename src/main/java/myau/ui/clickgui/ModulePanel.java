@@ -31,15 +31,15 @@ public class ModulePanel {
     private int scrollOffset = 0;
     private int visibleHeight = 200;
 
-    // Width of module rows — must match PANEL_WIDTH - padding in Rise6ClickGui
     private static final int ROW_WIDTH = 220;
+    private static final int SCROLL_BTN_SIZE = 14;
 
     public ModulePanel(SidebarCategory category) {
         this.category = category;
     }
 
-    public void setCategory(SidebarCategory category) {
-        this.category = category;
+    public void setCategory(SidebarCategory cat) {
+        this.category = cat;
         expandedModule = null;
         scrollOffset = 0;
     }
@@ -48,14 +48,18 @@ public class ModulePanel {
         this.visibleHeight = Math.max(50, h);
     }
 
+    public void scrollUp() {
+        scrollOffset = Math.max(0, scrollOffset - 20);
+    }
+
+    public void scrollDown() {
+        int maxScroll = Math.max(0, getContentHeight() - visibleHeight + 40);
+        scrollOffset = Math.min(maxScroll, scrollOffset + 20);
+    }
+
     public void handleScroll(int delta) {
-        int maxScroll = Math.max(0, getContentHeight() - visibleHeight);
-        if (delta > 0) {
-            scrollOffset -= 15;
-        } else {
-            scrollOffset += 15;
-        }
-        scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
+        if (delta > 0) scrollUp();
+        else scrollDown();
     }
 
     // ----------------------------------------------------------------
@@ -64,10 +68,10 @@ public class ModulePanel {
     public void render(int x, int y, int mouseX, int mouseY, String search) {
         int width  = ROW_WIDTH;
         int offsetY = y - scrollOffset;
+
+        // No scissor — just skip rows outside visible area
         int clipTop    = y;
         int clipBottom = y + visibleHeight;
-
-        ScissorUtil.enable(x - 2, clipTop, width + 30, visibleHeight);
 
         for (Module module : category.getModules()) {
             if (search != null && !search.isEmpty()) {
@@ -76,7 +80,9 @@ public class ModulePanel {
 
             int height = 16;
 
-            if (offsetY + height < clipTop || offsetY > clipBottom) {
+            boolean inView = !(offsetY + height + getSettingsHeight(module) < clipTop || offsetY > clipBottom);
+
+            if (!inView) {
                 offsetY += height + 1;
                 if (expandedModule == module) offsetY += getSettingsHeight(module);
                 continue;
@@ -168,9 +174,7 @@ public class ModulePanel {
                         String val = "< " + dropdown.getValue() + " >";
                         int valW = mc.fontRendererObj.getStringWidth(val);
                         GL11.glColor4f(1f, 1f, 1f, 1f);
-                        mc.fontRendererObj.drawString(val,
-                                x + width - valW - 8,
-                                offsetY + 4, 0xFF55AAFF);
+                        mc.fontRendererObj.drawString(val, x + width - valW - 8, offsetY + 4, 0xFF55AAFF);
 
                         offsetY += rowH + 1;
 
@@ -214,15 +218,37 @@ public class ModulePanel {
             }
         }
 
-        ScissorUtil.disable();
-
-        // Scrollbar
+        // ----------------------------------------------------------------
+        // SCROLL BUTTONS on the right side
+        // ----------------------------------------------------------------
         int totalH = getContentHeight();
         if (totalH > visibleHeight) {
-            int barH = Math.max(20, (int)((float) visibleHeight / totalH * visibleHeight));
-            int barY = y + (int)((float) scrollOffset / Math.max(1, totalH - visibleHeight) * (visibleHeight - barH));
-            drawSolidRect(x + width + 4, y, x + width + 7, y + visibleHeight, 0xFF333333);
-            drawSolidRect(x + width + 4, barY, x + width + 7, barY + barH, 0xFF55AAFF);
+            int btnX = x + width + 4;
+
+            // Up button
+            boolean upHovered = mouseX >= btnX && mouseX <= btnX + SCROLL_BTN_SIZE &&
+                                mouseY >= y && mouseY <= y + SCROLL_BTN_SIZE;
+            RoundedUtils.drawRoundedRect(btnX, y, SCROLL_BTN_SIZE, SCROLL_BTN_SIZE, 3,
+                    upHovered ? 0xFF333333 : 0xFF222222);
+            GL11.glColor4f(1f, 1f, 1f, 1f);
+            mc.fontRendererObj.drawString("^", btnX + 3, y + 3, 0xFF55AAFF);
+
+            // Down button
+            int downBtnY = y + visibleHeight - SCROLL_BTN_SIZE;
+            boolean downHovered = mouseX >= btnX && mouseX <= btnX + SCROLL_BTN_SIZE &&
+                                  mouseY >= downBtnY && mouseY <= downBtnY + SCROLL_BTN_SIZE;
+            RoundedUtils.drawRoundedRect(btnX, downBtnY, SCROLL_BTN_SIZE, SCROLL_BTN_SIZE, 3,
+                    downHovered ? 0xFF333333 : 0xFF222222);
+            GL11.glColor4f(1f, 1f, 1f, 1f);
+            mc.fontRendererObj.drawString("v", btnX + 3, downBtnY + 3, 0xFF55AAFF);
+
+            // Scrollbar track between buttons
+            int trackY  = y + SCROLL_BTN_SIZE + 2;
+            int trackH  = visibleHeight - SCROLL_BTN_SIZE * 2 - 4;
+            int thumbH  = Math.max(16, (int)((float) visibleHeight / totalH * trackH));
+            int thumbY  = trackY + (int)((float) scrollOffset / Math.max(1, totalH - visibleHeight) * (trackH - thumbH));
+            drawSolidRect(btnX + 5, trackY, btnX + 8, trackY + trackH, 0xFF333333);
+            drawSolidRect(btnX + 5, thumbY, btnX + 8, thumbY + thumbH, 0xFF55AAFF);
         }
     }
 
@@ -232,6 +258,28 @@ public class ModulePanel {
     public void mouseClicked(int panelX, int panelY, int mouseX, int mouseY, int button) {
         int x = panelX;
         int width = ROW_WIDTH;
+
+        // Scroll button clicks
+        int totalH = getContentHeight();
+        if (totalH > visibleHeight) {
+            int btnX = x + width + 4;
+
+            // Up button
+            if (mouseX >= btnX && mouseX <= btnX + SCROLL_BTN_SIZE &&
+                mouseY >= panelY && mouseY <= panelY + SCROLL_BTN_SIZE) {
+                scrollUp();
+                return;
+            }
+
+            // Down button
+            int downBtnY = panelY + visibleHeight - SCROLL_BTN_SIZE;
+            if (mouseX >= btnX && mouseX <= btnX + SCROLL_BTN_SIZE &&
+                mouseY >= downBtnY && mouseY <= downBtnY + SCROLL_BTN_SIZE) {
+                scrollDown();
+                return;
+            }
+        }
+
         int offsetY = panelY - scrollOffset;
 
         for (Module module : category.getModules()) {
