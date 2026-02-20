@@ -138,8 +138,8 @@ public class ConfigPanel {
                 } else if (button == 1) {
                     contextConfig = config;
                     // Position menu to the right of the sidebar so it doesn't overlap
-                    contextX = x + 112;
-                    contextY = mouseY;
+                    contextX = x;
+                    contextY = mouseY + 4;
                 }
                 return;
             }
