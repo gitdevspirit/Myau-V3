@@ -17,7 +17,6 @@ public class ConfigPanel {
     private List<String> configs = new ArrayList<>();
     private String activeConfig = Config.lastConfig;
 
-    // Context menu state
     private String contextConfig = null;
     private int contextX = 0;
     private int contextY = 0;
@@ -40,8 +39,8 @@ public class ConfigPanel {
 
     public void render(int x, int y, int mouseX, int mouseY) {
         if (configs.isEmpty()) {
-            GL11.glColor4f(1f, 1f, 1f, 1f);
-            mc.fontRendererObj.drawString("§7No configs found", x + 8, y + 6, 0xFF666666);
+            resetGL();
+            mc.fontRendererObj.drawString("No configs found", x + 8, y + 6, 0xFF666666);
             return;
         }
 
@@ -51,27 +50,35 @@ public class ConfigPanel {
             boolean hovered  = mouseX >= x && mouseX <= x + 106 &&
                                mouseY >= offsetY && mouseY <= offsetY + 18;
 
-            int bg = selected ? 0xFF1A3A5C : (hovered ? 0xFF2A2A2A : 0xFF1A1A1A);
-            RoundedUtils.drawRoundedRect(x, offsetY, 106, 18, 4, bg);
+            // Row background
+            int bg = selected ? 0xFF1A3A5C : (hovered ? 0xFF2A2A2A : 0xFF181818);
+            drawRect(x, offsetY, x + 106, offsetY + 18, bg);
 
+            // Blue accent bar if selected
             if (selected) {
-                drawSolidRect(x, offsetY, x + 3, offsetY + 18, 0xFF55AAFF);
+                drawRect(x, offsetY, x + 3, offsetY + 18, 0xFF55AAFF);
             }
 
-            GL11.glColor4f(1f, 1f, 1f, 1f);
-            int textColor = selected ? 0xFF55AAFF : (hovered ? 0xFFCCCCCC : 0xFFAAAAAA);
+            // Config name — white if selected, grey otherwise
+            int textColor = selected ? 0xFF55AAFF : (hovered ? 0xFFDDDDDD : 0xFF888888);
+            resetGL();
             mc.fontRendererObj.drawString(config, x + 8, offsetY + 5, textColor);
 
             offsetY += 20;
         }
 
-        // Context menu drawn on top
+        // Context menu — drawn on top
         if (contextConfig != null) {
             int menuW = 90;
             int menuH = CONTEXT_OPTIONS.length * 16 + 4;
-            RoundedUtils.drawRoundedRect(contextX, contextY, menuW, menuH, 4, 0xFF1A1A1A);
-            drawSolidRect(contextX, contextY, contextX + menuW, contextY + 1, 0xFF333333);
-            drawSolidRect(contextX, contextY + menuH - 1, contextX + menuW, contextY + menuH, 0xFF333333);
+
+            // Background
+            drawRect(contextX, contextY, contextX + menuW, contextY + menuH, 0xFF1A1A1A);
+            // Border
+            drawRect(contextX, contextY, contextX + menuW, contextY + 1, 0xFF333333);
+            drawRect(contextX, contextY + menuH - 1, contextX + menuW, contextY + menuH, 0xFF333333);
+            drawRect(contextX, contextY, contextX + 1, contextY + menuH, 0xFF333333);
+            drawRect(contextX + menuW - 1, contextY, contextX + menuW, contextY + menuH, 0xFF333333);
 
             for (int i = 0; i < CONTEXT_OPTIONS.length; i++) {
                 String option = CONTEXT_OPTIONS[i];
@@ -80,15 +87,16 @@ public class ConfigPanel {
                                      mouseY >= optY && mouseY <= optY + 16;
 
                 if (optHovered) {
-                    RoundedUtils.drawRoundedRect(contextX + 2, optY, menuW - 4, 16, 3, 0xFF2A2A2A);
+                    drawRect(contextX + 2, optY, contextX + menuW - 2, optY + 16, 0xFF2A2A2A);
                 }
 
                 int optColor;
-                if (option.equals("Delete"))      optColor = 0xFFFF5555;
-                else if (option.equals("Save"))   optColor = 0xFF55FF55;
-                else                              optColor = optHovered ? 0xFFFFFFFF : 0xFFAAAAAA;
+                if (option.equals("Delete"))       optColor = 0xFFFF5555;
+                else if (option.equals("Save"))    optColor = 0xFF55FF55;
+                else if (option.equals("Load"))    optColor = optHovered ? 0xFF55AAFF : 0xFF888888;
+                else                               optColor = optHovered ? 0xFFFFFFFF : 0xFF888888;
 
-                GL11.glColor4f(1f, 1f, 1f, 1f);
+                resetGL();
                 mc.fontRendererObj.drawString(option, contextX + 8, optY + 4, optColor);
             }
         }
@@ -96,18 +104,24 @@ public class ConfigPanel {
 
     public void mouseClicked(int x, int y, int mouseX, int mouseY, int button) {
 
-        // Context menu open — handle it first
+        // Context menu open — handle first
         if (contextConfig != null) {
             int menuW = 90;
-            for (int i = 0; i < CONTEXT_OPTIONS.length; i++) {
-                int optY = contextY + 2 + i * 16;
-                if (mouseX >= contextX && mouseX <= contextX + menuW &&
-                    mouseY >= optY && mouseY <= optY + 16) {
-                    handleContextOption(CONTEXT_OPTIONS[i], contextConfig);
-                    contextConfig = null;
-                    return;
+            int menuH = CONTEXT_OPTIONS.length * 16 + 4;
+
+            // Check if clicked inside menu
+            if (mouseX >= contextX && mouseX <= contextX + menuW &&
+                mouseY >= contextY && mouseY <= contextY + menuH) {
+                for (int i = 0; i < CONTEXT_OPTIONS.length; i++) {
+                    int optY = contextY + 2 + i * 16;
+                    if (mouseY >= optY && mouseY <= optY + 16) {
+                        handleContextOption(CONTEXT_OPTIONS[i], contextConfig);
+                        contextConfig = null;
+                        return;
+                    }
                 }
             }
+            // Clicked outside — just close
             contextConfig = null;
             return;
         }
@@ -123,7 +137,8 @@ public class ConfigPanel {
                     new Config(config, false).load();
                 } else if (button == 1) {
                     contextConfig = config;
-                    contextX = mouseX;
+                    // Position menu to the right of the sidebar so it doesn't overlap
+                    contextX = x + 112;
                     contextY = mouseY;
                 }
                 return;
@@ -173,7 +188,7 @@ public class ConfigPanel {
         return configs.size() * 20 + 4;
     }
 
-    private void drawSolidRect(int x1, int y1, int x2, int y2, int color) {
+    private void drawRect(int x1, int y1, int x2, int y2, int color) {
         float a = (color >> 24 & 0xFF) / 255f;
         float r = (color >> 16 & 0xFF) / 255f;
         float g = (color >> 8  & 0xFF) / 255f;
@@ -183,11 +198,17 @@ public class ConfigPanel {
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GL11.glColor4f(r, g, b, a);
         GL11.glBegin(GL11.GL_QUADS);
-        GL11.glVertex2f(x1, y1);
-        GL11.glVertex2f(x2, y1);
-        GL11.glVertex2f(x2, y2);
-        GL11.glVertex2f(x1, y2);
+        GL11.glVertex2d(x1, y2);
+        GL11.glVertex2d(x2, y2);
+        GL11.glVertex2d(x2, y1);
+        GL11.glVertex2d(x1, y1);
         GL11.glEnd();
+        GL11.glDisable(GL11.GL_BLEND);
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glColor4f(1f, 1f, 1f, 1f);
+    }
+
+    private void resetGL() {
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glDisable(GL11.GL_BLEND);
         GL11.glColor4f(1f, 1f, 1f, 1f);
