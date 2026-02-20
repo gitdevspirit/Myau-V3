@@ -67,7 +67,7 @@ public class ModulePanel {
         int clipTop    = y;
         int clipBottom = y + visibleHeight;
 
-        ScissorUtil.enable(x, clipTop, width + 20, visibleHeight);
+        ScissorUtil.enable(x - 2, clipTop, width + 30, visibleHeight);
 
         for (Module module : category.getModules()) {
             if (search != null && !search.isEmpty()) {
