@@ -93,10 +93,6 @@ public class KillAura extends Module {
     public final ModeProperty showTarget;
     public final ModeProperty debugLog;
 
-    // Optional extras added (sliders/dropdowns where fit) - can remove if not wanted
-    public final PercentProperty hitChance;  // % chance to hit (anti-pattern detection)
-    public final BooleanProperty noAttackWhileBlocking;
-
     public KillAura() {
         super("KillAura", false);
 
@@ -131,10 +127,6 @@ public class KillAura extends Module {
         this.teams = new BooleanProperty("teams", true);
         this.showTarget = new ModeProperty("show-target", 0, new String[]{"NONE", "DEFAULT", "HUD"});
         this.debugLog = new ModeProperty("debug-log", 0, new String[]{"NONE", "HEALTH"});
-
-        // Added extras
-        this.hitChance = new PercentProperty("hit-chance", 100);
-        this.noAttackWhileBlocking = new BooleanProperty("no-attack-while-blocking", false);
     }
 
     private long getAttackDelay() {
@@ -247,16 +239,6 @@ public class KillAura extends Module {
         if (this.attackDelayMS > 0L)
             return false;
 
-        // Added hit chance check
-        if (RandomUtil.nextInt(0, 100) > this.hitChance.getValue()) {
-            return false;
-        }
-
-        // Added no attack while blocking
-        if (this.noAttackWhileBlocking.getValue() && mc.thePlayer.isBlocking()) {
-            return false;
-        }
-
         this.attackDelayMS += this.getAttackDelay();
         mc.thePlayer.swingItem();
 
@@ -347,19 +329,18 @@ public class KillAura extends Module {
 
             if (!this.isValidTarget(living)) continue;
 
-            AxisAlignedBB box = living.getEntityBoundingBox();
-            double distance = RotationUtil.distanceToBox(box);
-            float angle = RotationUtil.angleToEntity(living);
-
-            targets.add(new AttackData(living, box, distance, angle));
+            targets.add(new AttackData(living));  // Use existing 1-arg constructor
         }
 
         if (targets.isEmpty()) return null;
 
-        // Sort based on selected mode
+        // Sort based on selected mode - compute distance/angle on-the-fly
         switch (this.sort.getValue()) {
             case 0: // DISTANCE
-                targets.sort((a, b) -> Double.compare(a.getDistance(), b.getDistance()));
+                targets.sort((a, b) -> Double.compare(
+                        RotationUtil.distanceToBox(a.getBox()),
+                        RotationUtil.distanceToBox(b.getBox())
+                ));
                 break;
             case 1: // HEALTH
                 targets.sort((a, b) -> Float.compare(a.getEntity().getHealth(), b.getEntity().getHealth()));
@@ -368,12 +349,13 @@ public class KillAura extends Module {
                 targets.sort((a, b) -> Integer.compare(a.getEntity().hurtTime, b.getEntity().hurtTime));
                 break;
             case 3: // FOV
-                targets.sort((a, b) -> Float.compare(a.getAngle(), b.getAngle()));
+                targets.sort((a, b) -> Float.compare(
+                        RotationUtil.angleToEntity(a.getEntity()),
+                        RotationUtil.angleToEntity(b.getEntity())
+                ));
                 break;
         }
 
         return targets.get(0);
     }
-
-    // You can add more event handlers if needed (e.g. onPacket for server-side checks)
 }
