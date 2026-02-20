@@ -1,286 +1,126 @@
-// Source code is decompiled from a .class file using FernFlower decompiler (from Intellij IDEA).
-package myau.module.modules;
+package myau.module.modules;  // ← change to match your package
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Queue;
-import myau.Myau;
-import myau.event.EventTarget;
-import myau.event.types.EventType;
-import myau.events.PacketEvent;
-import myau.events.Render3DEvent;
-import myau.events.UpdateEvent;
-import myau.module.Module;
-import myau.property.properties.BooleanProperty;
-import myau.property.properties.FloatProperty;
-import myau.property.properties.IntProperty;
-import myau.property.properties.ModeProperty;
-import myau.util.MSTimer;
-import myau.util.PacketUtil;
+import myau.module.Module;           // assuming your base Module class
+// or import whatever your framework uses (e.g. net.ccbluex.liquidbounce.features.module.Module)
+
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.network.Packet;
-import net.minecraft.network.play.client.C00PacketKeepAlive;
-import net.minecraft.network.play.client.C02PacketUseEntity;
-import net.minecraft.network.play.client.C03PacketPlayer;
-import net.minecraft.network.play.client.C07PacketPlayerDigging;
-import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement;
-import net.minecraft.network.play.client.C09PacketHeldItemChange;
-import net.minecraft.network.play.client.C0APacketAnimation;
-import net.minecraft.network.play.client.C0BPacketEntityAction;
-import net.minecraft.network.play.server.S0FPacketSpawnMob;
-import net.minecraft.network.play.server.S12PacketEntityVelocity;
 import net.minecraft.network.play.server.S14PacketEntity;
 import net.minecraft.network.play.server.S18PacketEntityTeleport;
-import net.minecraft.network.play.server.S19PacketEntityHeadLook;
-import net.minecraft.network.play.server.S27PacketExplosion;
-import net.minecraft.network.status.client.C01PacketPing;
-import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.Vec3;
 
-public class BackTrack extends Module {
-   private static final Minecraft mc = Minecraft.func_71410_x();
-   public final BooleanProperty legit = new BooleanProperty("Legit", false);
-   public final BooleanProperty releaseOnHit = new BooleanProperty("ReleaseOnHit", true, () -> {
-      return (Boolean)this.legit.getValue();
-   });
-   public final IntProperty delay = new IntProperty("Delay", 400, 0, 1000);
-   public final FloatProperty hitRange = new FloatProperty("Range", 3.0F, 3.0F, 10.0F);
-   public final BooleanProperty onlyIfNeeded = new BooleanProperty("OnlyIfNeeded", true);
-   public final BooleanProperty esp = new BooleanProperty("ESP", true);
-   public final ModeProperty espMode = new ModeProperty("ESPMODE", 0, new String[]{"Hitbox", "None"});
-   private final Queue<Packet> incomingPackets = new LinkedList();
-   private final Queue<Packet> outgoingPackets = new LinkedList();
-   private final Map<Integer, Vec3> realPositions = new HashMap();
-   private final MSTimer timer = new MSTimer();
-   private KillAura killAura;
-   private EntityLivingBase target;
-   private Vec3 lastRealPos;
+import java.util.HashMap;
+import java.util.Map;
 
-   public BackTrack() {
-      super("BackTrack", false);
-   }
+public class BackTrack extends Module {  // adjust super call / annotations to match your framework
 
-   public void onEnabled() {
-      Module m = Myau.moduleManager.getModule(KillAura.class);
-      if (m instanceof KillAura) {
-         this.killAura = (KillAura)m;
-      }
+    private final Map<Integer, Vec3> realPositions = new HashMap<>();
+    private Vec3 lastRealPos = null;
+    private EntityLivingBase target = null;  // you probably set this elsewhere (e.g. KillAura target)
 
-      this.incomingPackets.clear();
-      this.outgoingPackets.clear();
-      this.realPositions.clear();
-      this.lastRealPos = null;
-      this.timer.reset();
-   }
+    public BackTrack() {
+        // Example constructor – adjust name, category, etc. to your system
+        super("BackTrack", "Tracks real server positions for better reach/backtrack", Category.COMBAT);
+    }
 
-   public void onDisabled() {
-      this.releaseAll();
-      this.incomingPackets.clear();
-      this.outgoingPackets.clear();
-      this.realPositions.clear();
-      this.lastRealPos = null;
-   }
+    // Assuming your module framework calls something like this on packet receive
+    // If you use EventPacket or Mixin, hook into packet handling there and call this method
+    public void onPacket(Packet<?> packet) {
+        if (!this.isEnabled()) return;
 
-   @EventTarget
-   public void onPacket(PacketEvent event) {
-      if (this.isEnabled() && mc.field_71439_g != null && mc.field_71441_e != null && this.killAura != null) {
-         Module scaffold = Myau.moduleManager.getModule(Scaffold.class);
-         if (scaffold != null && scaffold.isEnabled()) {
-            this.releaseAll();
-            this.incomingPackets.clear();
-            this.outgoingPackets.clear();
-         } else {
-            this.target = this.killAura.getTarget();
-            if (event.getType() == EventType.RECEIVE) {
-               this.handleIncoming(event);
-            } else if (event.getType() == EventType.SEND) {
-               this.handleOutgoing(event);
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.thePlayer == null || mc.theWorld == null) return;
+
+        if (packet instanceof S14PacketEntity) {
+            S14PacketEntity p = (S14PacketEntity) packet;
+            Entity e = p.getEntity(mc.theWorld);
+
+            if (e != null) {
+                int id = e.getEntityId();
+                Vec3 pos = new Vec3(e.posX, e.posY, e.posZ);
+
+                // Relative move
+                pos = pos.addVector(
+                        (double) p.func_149062_c() / 32.0,  // getX() / 32 in deobf is func_149062_c in some mappings – keep if needed, else p.getX() / 32.0
+                        (double) p.func_149061_d() / 32.0,
+                        (double) p.func_149064_e() / 32.0
+                );
+
+                realPositions.put(id, pos);
             }
+        }
+        else if (packet instanceof S18PacketEntityTeleport) {
+            S18PacketEntityTeleport p = (S18PacketEntityTeleport) packet;
 
-         }
-      }
-   }
+            // In 1.8.9 MCP: getEntityId(), getX(), getY(), getZ() – all return int (fixed-point ×32)
+            realPositions.put(
+                    p.getEntityId(),
+                    new Vec3(
+                            (double) p.getX() / 32.0,
+                            (double) p.getY() / 32.0,
+                            (double) p.getZ() / 32.0
+                    )
+            );
+        }
+    }
 
-   private void handleIncoming(PacketEvent event) {
-      Packet<?> packet = event.getPacket();
-      if (packet instanceof S14PacketEntity) {
-         S14PacketEntity p = (S14PacketEntity)packet;
-         Entity e = p.func_149065_a(mc.field_71441_e);
-         if (e == null) {
-            return;
-         }
+    // Example render / logic tick – adjust to your event system (e.g. EventUpdate, Render3D)
+    public void onUpdate() {
+        if (!this.isEnabled()) return;
 
-         int id = e.func_145782_y();
-         Vec3 pos = (Vec3)this.realPositions.getOrDefault(id, new Vec3(0.0, 0.0, 0.0));
-         this.realPositions.put(id, pos.func_72441_c((double)p.func_149062_c() / 32.0, (double)p.func_149061_d() / 32.0, (double)p.func_149064_e() / 32.0));
-      }
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.thePlayer == null) return;
 
-      if (packet instanceof S18PacketEntityTeleport) {
-         S18PacketEntityTeleport p = (S18PacketEntityTeleport)packet;
-         this.realPositions.put(p.func_149451_c(), new Vec3((double)p.func_149449_d() / 32.0, (double)p.func_149448_e() / 32.0, (double)p.func_149446_f() / 32.0));
-      }
+        // Example: find closest target (you probably have better logic in KillAura/Aimbot)
+        this.target = null;
+        double closest = Double.MAX_VALUE;
 
-      if (this.shouldQueue()) {
-         if (this.blockIncoming(packet)) {
-            this.incomingPackets.add(packet);
-            event.setCancelled(true);
-         }
-      } else {
-         this.releaseIncoming();
-      }
-
-   }
-
-   private void handleOutgoing(PacketEvent event) {
-      Packet<?> packet = event.getPacket();
-      if ((Boolean)this.legit.getValue()) {
-         if (this.shouldQueue()) {
-            if (this.blockOutgoing(packet)) {
-               this.outgoingPackets.add(packet);
-               event.setCancelled(true);
+        for (Object o : mc.theWorld.loadedEntityList) {
+            if (o instanceof EntityLivingBase) {
+                EntityLivingBase e = (EntityLivingBase) o;
+                if (e != mc.thePlayer && !e.isDead) {
+                    double dist = mc.thePlayer.getDistanceToEntity(e);
+                    if (dist < closest) {
+                        closest = dist;
+                        this.target = e;
+                    }
+                }
             }
-         } else {
-            this.releaseOutgoing();
-         }
+        }
 
-      }
-   }
+        if (this.target != null) {
+            Vec3 real = realPositions.get(this.target.getEntityId());
 
-   @EventTarget
-   public void onUpdate(UpdateEvent e) {
-      if (this.isEnabled() && mc.field_71439_g != null) {
-         if (this.target != this.killAura.getTarget()) {
-            this.releaseAll();
-            this.lastRealPos = null;
-         }
-
-         if (this.target != null) {
-            Vec3 real = (Vec3)this.realPositions.get(this.target.func_145782_y());
             if (real != null) {
-               double distReal = mc.field_71439_g.func_70011_f(real.field_72450_a, real.field_72448_b, real.field_72449_c);
-               double distCurrent = (double)mc.field_71439_g.func_70032_d(this.target);
-               if (mc.field_71439_g.field_70738_aO > 0 && mc.field_71439_g.field_70737_aN == mc.field_71439_g.field_70738_aO) {
-                  this.releaseAll();
-               }
+                double distReal = mc.thePlayer.getDistanceSq(real.xCoord, real.yCoord, real.zCoord);
+                double distCurrent = mc.thePlayer.getDistanceToEntity(this.target);
 
-               if (distReal > (double)(Float)this.hitRange.getValue() || this.timer.hasTimePassed((Integer)this.delay.getValue())) {
-                  this.releaseAll();
-               }
+                // Example backtrack condition (e.g. during hit)
+                if (mc.thePlayer.hurtTime > 0 && mc.thePlayer.hurtTime == mc.thePlayer.maxHurtTime) {
+                    // You were just hit → maybe store last real pos or something
+                    this.lastRealPos = real;
+                }
 
-               if ((Boolean)this.onlyIfNeeded.getValue()) {
-                  if (distCurrent <= distReal) {
-                     this.releaseAll();
-                  }
-
-                  if (this.lastRealPos != null) {
-                     double lastDist = mc.field_71439_g.func_70011_f(this.lastRealPos.field_72450_a, this.lastRealPos.field_72448_b, this.lastRealPos.field_72449_c);
-                     if (distReal < lastDist) {
-                        this.releaseAll();
-                     }
-                  }
-               }
-
-               if ((Boolean)this.legit.getValue() && (Boolean)this.releaseOnHit.getValue() && this.target.field_70737_aN == 1) {
-                  this.releaseAll();
-               }
-
-               this.lastRealPos = real;
+                // Example usage: if real pos is farther than current → backtrack opportunity
+                if (distReal > distCurrent + 1.0) {
+                    // Could render tracer, extend hitbox, etc.
+                    // Many clients use this to "predict" or "backtrack" hits
+                }
             }
-         }
-      }
-   }
+        }
+    }
 
-   @EventTarget
-   public void onRender3D(Render3DEvent e) {
-      if ((Boolean)this.esp.getValue()) {
-         if ((Integer)this.espMode.getValue() == 0) {
-            if (this.target != null) {
-               Vec3 real = (Vec3)this.realPositions.get(this.target.func_145782_y());
-               if (real != null) {
-                  double x = real.field_72450_a - mc.func_175598_ae().field_78730_l;
-                  double y = real.field_72448_b - mc.func_175598_ae().field_78731_m;
-                  double z = real.field_72449_c - mc.func_175598_ae().field_78728_n;
-                  AxisAlignedBB box = new AxisAlignedBB(x - (double)(this.target.field_70130_N / 2.0F), y, z - (double)(this.target.field_70130_N / 2.0F), x + (double)(this.target.field_70130_N / 2.0F), y + (double)this.target.field_70131_O, z + (double)(this.target.field_70130_N / 2.0F));
-                  GlStateManager.func_179094_E();
-                  GlStateManager.func_179090_x();
-                  GlStateManager.func_179097_i();
-                  GlStateManager.func_179132_a(false);
-                  GlStateManager.func_179131_c(1.0F, 0.0F, 0.0F, 0.4F);
-                  RenderGlobal.func_181563_a(box, 255, 0, 0, 153);
-                  GlStateManager.func_179132_a(true);
-                  GlStateManager.func_179126_j();
-                  GlStateManager.func_179098_w();
-                  GlStateManager.func_179121_F();
-               }
-            }
-         }
-      }
-   }
+    // Optional: clear on disable/world change/etc.
+    @Override
+    public void onDisable() {
+        realPositions.clear();
+        lastRealPos = null;
+        target = null;
+        super.onDisable();
+    }
 
-   private boolean shouldQueue() {
-      if (this.target == null) {
-         return false;
-      } else {
-         Vec3 real = (Vec3)this.realPositions.get(this.target.func_145782_y());
-         if (real == null) {
-            return false;
-         } else {
-            double distReal;
-            double distCurrent;
-            if ((Boolean)this.onlyIfNeeded.getValue()) {
-               distReal = mc.field_71439_g.func_70011_f(real.field_72450_a, real.field_72448_b, real.field_72449_c);
-               distCurrent = (double)mc.field_71439_g.func_70032_d(this.target);
-               return distReal < distCurrent;
-            } else {
-               distReal = mc.field_71439_g.func_70011_f(real.field_72450_a, real.field_72448_b, real.field_72449_c);
-               distCurrent = (double)mc.field_71439_g.func_70032_d(this.target);
-               return distReal + 0.15 < distCurrent && !this.timer.hasTimePassed((Integer)this.delay.getValue());
-            }
-         }
-      }
-   }
-
-   private void releaseIncoming() {
-      if (mc.func_147114_u() != null) {
-         while(!this.incomingPackets.isEmpty()) {
-            ((Packet)this.incomingPackets.poll()).func_148833_a(mc.func_147114_u());
-         }
-
-         this.timer.reset();
-      }
-   }
-
-   private void releaseOutgoing() {
-      while(!this.outgoingPackets.isEmpty()) {
-         PacketUtil.sendPacketNoEvent((Packet)this.outgoingPackets.poll());
-      }
-
-      this.timer.reset();
-   }
-
-   private void releaseAll() {
-      this.releaseIncoming();
-      this.releaseOutgoing();
-   }
-
-   private boolean blockIncoming(Packet<?> p) {
-      if (!(Boolean)this.onlyIfNeeded.getValue()) {
-         if (!(p instanceof S12PacketEntityVelocity) && !(p instanceof S27PacketExplosion)) {
-            return p instanceof S14PacketEntity || p instanceof S18PacketEntityTeleport || p instanceof S19PacketEntityHeadLook || p instanceof S0FPacketSpawnMob;
-         } else {
-            return false;
-         }
-      } else {
-         return p instanceof S12PacketEntityVelocity || p instanceof S27PacketExplosion || p instanceof S14PacketEntity || p instanceof S18PacketEntityTeleport || p instanceof S19PacketEntityHeadLook || p instanceof S0FPacketSpawnMob;
-      }
-   }
-
-   private boolean blockOutgoing(Packet<?> p) {
-      return p instanceof C03PacketPlayer || p instanceof C02PacketUseEntity || p instanceof C0APacketAnimation || p instanceof C0BPacketEntityAction || p instanceof C08PacketPlayerBlockPlacement || p instanceof C07PacketPlayerDigging || p instanceof C09PacketHeldItemChange || p instanceof C00PacketKeepAlive || p instanceof C01PacketPing;
-   }
+    // If you have a render event (Render3D / ESP), you can draw lines to real positions here
+    // public void onRender3D(...) { ... draw tracer to realPositions.get(target.getEntityId()) ... }
 }
