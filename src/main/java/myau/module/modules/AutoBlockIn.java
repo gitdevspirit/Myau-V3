@@ -31,13 +31,13 @@ public class AutoBlockIn extends Module {
     private final Map<String, Integer> BLOCK_SCORE = new HashMap<>();
     private long lastPlaceTime = 0;
     
-    public final FloatProperty range = new FloatProperty("range", 4.5f, 3.0f, 6.0f);
-    public final IntProperty speed = new IntProperty("speed", 20, 5, 100);
-    public final IntProperty placeDelay = new IntProperty("place-delay", 50, 0, 200);
-    public final IntProperty rotationTolerance = new IntProperty("rotation-tolerance", 25, 5, 100);
-    public final BooleanProperty itemSpoof = new BooleanProperty("item-spoof", true);
-    public final BooleanProperty showProgress = new BooleanProperty("show-progress", true);
-    public final ModeProperty moveFix = new ModeProperty("move-fix", 1, new String[]{"NONE", "SILENT", "STRICT"});
+    public final SliderSetting   range             = new SliderSetting("Range",           4.5, 3.0,  6.0, 0.1);
+    public final SliderSetting   speed             = new SliderSetting("Speed",            20,   5,  100,   1);
+    public final SliderSetting   placeDelay        = new SliderSetting("Place Delay",      50,   0,  200,   1);
+    public final SliderSetting   rotationTolerance = new SliderSetting("Rot Tolerance",    25,   5,  100,   1);
+    public final BooleanSetting  itemSpoof         = new BooleanSetting("Item Spoof",      true);
+    public final BooleanSetting  showProgress      = new BooleanSetting("Show Progress",   true);
+    public final DropdownSetting moveFix           = new DropdownSetting("Move Fix",       1, "NONE", "SILENT", "STRICT");
     
     private float serverYaw;
     private float serverPitch;
@@ -54,8 +54,15 @@ public class AutoBlockIn extends Module {
     private static final double STEP = 0.2;
     private static final double JIT = STEP * 0.1;
     
-    public AutoBlockIn() {
-        super("AutoBlockIn", false);
+public AutoBlockIn() {
+    super("AutoBlockIn", false);
+    register(range);
+    register(speed);
+    register(placeDelay);
+    register(rotationTolerance);
+    register(itemSpoof);
+    register(showProgress);
+    register(moveFix);
         
         BLOCK_SCORE.put("obsidian", 0);
         BLOCK_SCORE.put("end_stone", 1);
