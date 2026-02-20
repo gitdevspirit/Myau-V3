@@ -22,11 +22,11 @@ public class AimAssist extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
     private final TimerUtil timer = new TimerUtil();
 
-    public final SliderSetting  hSpeed     = new SliderSetting("H-Speed",   3.0, 0.0, 10.0, 0.1);
-    public final SliderSetting  vSpeed     = new SliderSetting("V-Speed",   0.0, 0.0, 10.0, 0.1);
-    public final SliderSetting  smoothing  = new SliderSetting("Smoothing", 50,  0,   100,   1);
-    public final SliderSetting  range      = new SliderSetting("Range",     4.5, 3.0, 8.0,  0.1);
-    public final SliderSetting  fov        = new SliderSetting("FOV",       90,  30,  360,   1);
+    public final SliderSetting  hSpeed    = new SliderSetting("H-Speed",    3.0, 0.0, 10.0, 0.1);
+    public final SliderSetting  vSpeed    = new SliderSetting("V-Speed",    0.0, 0.0, 10.0, 0.1);
+    public final SliderSetting  smoothing = new SliderSetting("Smoothing",  50,  0,   100,   1);
+    public final SliderSetting  range     = new SliderSetting("Range",      4.5, 3.0, 8.0,  0.1);
+    public final SliderSetting  fov       = new SliderSetting("FOV",        90,  30,  360,   1);
     public final BooleanSetting weaponOnly = new BooleanSetting("Weapons Only", true);
     public final BooleanSetting allowTools = new BooleanSetting("Allow Tools",  false);
     public final BooleanSetting botChecks  = new BooleanSetting("Bot Check",    true);
@@ -34,25 +34,33 @@ public class AimAssist extends Module {
 
     public AimAssist() {
         super("AimAssist", false);
-        register(hSpeed, vSpeed, smoothing, range, fov, weaponOnly, allowTools, botChecks, team);
+        register(hSpeed);
+        register(vSpeed);
+        register(smoothing);
+        register(range);
+        register(fov);
+        register(weaponOnly);
+        register(allowTools);
+        register(botChecks);
+        register(team);
     }
 
-    private boolean isValidTarget(EntityPlayer entityPlayer) {
-        if (entityPlayer == mc.thePlayer || entityPlayer == mc.thePlayer.ridingEntity) return false;
-        if (entityPlayer == mc.getRenderViewEntity() || entityPlayer == mc.getRenderViewEntity().ridingEntity) return false;
-        if (entityPlayer.deathTime > 0) return false;
-        if (RotationUtil.distanceToEntity(entityPlayer) > range.getValue()) return false;
-        if (RotationUtil.angleToEntity(entityPlayer) > (float) fov.getValue()) return false;
-        if (RotationUtil.rayTrace(entityPlayer) != null) return false;
-        if (TeamUtil.isFriend(entityPlayer)) return false;
-        return (!team.getValue() || !TeamUtil.isSameTeam(entityPlayer))
-                && (!botChecks.getValue() || !TeamUtil.isBot(entityPlayer));
+    private boolean isValidTarget(EntityPlayer p) {
+        if (p == mc.thePlayer || p == mc.thePlayer.ridingEntity) return false;
+        if (p == mc.getRenderViewEntity() || p == mc.getRenderViewEntity().ridingEntity) return false;
+        if (p.deathTime > 0) return false;
+        if (RotationUtil.distanceToEntity(p) > range.getValue()) return false;
+        if (RotationUtil.angleToEntity(p) > (float) fov.getValue()) return false;
+        if (RotationUtil.rayTrace(p) != null) return false;
+        if (TeamUtil.isFriend(p)) return false;
+        return (!team.getValue() || !TeamUtil.isSameTeam(p))
+                && (!botChecks.getValue() || !TeamUtil.isBot(p));
     }
 
-    private boolean isInReach(EntityPlayer entityPlayer) {
+    private boolean isInReach(EntityPlayer p) {
         Reach reach = (Reach) Myau.moduleManager.modules.get(Reach.class);
         double distance = reach.isEnabled() ? reach.range.getValue() : 3.0;
-        return RotationUtil.distanceToEntity(entityPlayer) <= distance;
+        return RotationUtil.distanceToEntity(p) <= distance;
     }
 
     private boolean isLookingAtBlock() {
@@ -61,7 +69,7 @@ public class AimAssist extends Module {
 
     @EventTarget
     public void onTick(TickEvent event) {
-        if (this.isEnabled() && event.getType() == EventType.POST && mc.currentScreen == null) {
+        if (isEnabled() && event.getType() == EventType.POST && mc.currentScreen == null) {
             if (!weaponOnly.getValue() || ItemUtil.hasRawUnbreakingEnchant()
                     || allowTools.getValue() && ItemUtil.isHoldingTool()) {
                 boolean attacking = PlayerUtil.isAttacking();
