@@ -26,7 +26,10 @@ public class RotationUtil {
     }
 
     public static float smoothAngle(float angle, float smoothFactor) {
-        return angle * (0.5f + 0.5f * (1.0f - Math.max(0.0f, Math.min(1.0f, smoothFactor + RandomUtil.nextFloat(-0.1f, 0.1f)))));
+        // smoothFactor 0 = instant, 0.95+ = very smooth (2-5% per tick)
+        float factor = Math.max(0.0f, Math.min(1.0f, smoothFactor));
+        float step = Math.max(0.02f, 1.0f - factor);  // min 2% per tick to avoid getting stuck
+        return angle * (step + RandomUtil.nextFloat(-0.005f, 0.005f));  // tiny variance for less robotic feel
     }
 
     public static float quantizeAngle(float angle) {

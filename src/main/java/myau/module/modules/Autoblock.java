@@ -26,7 +26,7 @@ public class Autoblock extends Module {
     public final DropdownSetting mode = register(new DropdownSetting("Mode", 10,
             "NONE", "VANILLA", "SPOOF", "HYPIXEL", "BLINK",
             "INTERACT", "SWAP", "LEGIT", "FAKE", "LAGRANGE",
-            "GRIM", "SLINKY"
+            "GRIM", "SLINKY", "LEGITFULL"
     ));
 
     public final SliderSetting blockRange   = register(new SliderSetting("Block Range",   6.0,   3.0,   8.0,   0.1));
@@ -48,6 +48,9 @@ public class Autoblock extends Module {
     public final BooleanSetting slinkyLeftClick      = register(new BooleanSetting("Slinky Left Click",   false));
     public final BooleanSetting slinkyDamaged        = register(new BooleanSetting("Slinky Damaged",      true));
 
+    // LEGITFULL settings (block→hold 2 ticks→release rhythm, bypasses Grim)
+    public final BooleanSetting legitfullBlockDelay  = register(new BooleanSetting("Block Delay", false, () -> mode.getIndex() == 12));
+
     // Internal state
     private boolean blockingState  = false;
     private boolean fakeBlockState = false;
@@ -56,6 +59,7 @@ public class Autoblock extends Module {
     private int     blockTick      = 0;
     private long    blockDelayMS   = 0L;
     private int     releaseTick    = 0;
+    private int     releaseCooldownTicks = 0;  // Min ticks after release before re-block (Grim place/use PacketOrderI)
 
     public Autoblock() {
         super("Autoblock", false);
@@ -96,6 +100,10 @@ public class Autoblock extends Module {
     }
 
     public void stopBlock() {
+        stopBlock(false);
+    }
+
+    private void stopBlock(boolean fromLegitFull) {
         PacketUtil.sendPacket(new C07PacketPlayerDigging(
                 C07PacketPlayerDigging.Action.RELEASE_USE_ITEM,
                 BlockPos.ORIGIN,
@@ -104,6 +112,9 @@ public class Autoblock extends Module {
         mc.thePlayer.stopUsingItem();
         this.blockingState = false;
         this.releaseTick   = 0;
+        if (!fromLegitFull) {
+            this.releaseCooldownTicks = 5;  // Wait before next place packet (Grim place/use PacketOrderI)
+        }
     }
 
     private int findEmptySlot(int currentSlot) {
@@ -134,9 +145,10 @@ public class Autoblock extends Module {
         if (event.getType() != EventType.PRE) return;
 
         if (this.blockDelayMS > 0L) this.blockDelayMS -= 50L;
+        if (this.releaseCooldownTicks > 0) this.releaseCooldownTicks--;
 
-        // Don't re-block for 1-2 ticks after KillAura attacks (Grim PacketOrderI / RotationBreak)
-        if (KillAura.attackCooldownTicks > 0) {
+        // Don't re-block after KillAura attacks or until release has "settled" (Grim PacketOrderI place/use)
+        if (KillAura.attackCooldownTicks > 0 || this.releaseCooldownTicks > 0) {
             if (this.blockingState) stopBlock();
             Myau.blinkManager.setBlinkState(false, BlinkModules.AUTO_BLOCK);
             this.isBlocking = false;
@@ -295,6 +307,38 @@ public class Autoblock extends Module {
                 this.isBlocking    = true;
                 this.fakeBlockState = false;
                 break;
+
+            case 12: // LEGITFULL - block→hold 2 ticks→release rhythm (Grim bypass)
+                if (!Myau.playerStateManager.digging && !Myau.playerStateManager.placing) {
+                    switch (this.blockTick) {
+                        case 0:
+                            if (legitfullBlockDelay.getValue()) {
+                                this.blockTick = 1;
+                            } else {
+                                if (!this.blockingState) swap = true;
+                                this.blockTick = 2;
+                            }
+                            break;
+                        case 1:
+                            if (!this.blockingState) swap = true;
+                            this.blockTick = 2;
+                            break;
+                        case 2:
+                        case 3:
+                            swap = false;
+                            this.blockTick++;
+                            break;
+                        case 4:
+                            if (this.blockingState) stopBlock(true);  // LEGITFULL rhythm - no extra cooldown
+                            this.blockTick = 0;
+                            break;
+                        default:
+                            this.blockTick = 0;
+                    }
+                }
+                this.isBlocking    = true;
+                this.fakeBlockState = false;
+                break;
         }
 
         if (swap && this.blockDelayMS <= 0L) {
@@ -311,6 +355,7 @@ public class Autoblock extends Module {
         this.blockTick     = 0;
         this.blockDelayMS  = 0L;
         this.releaseTick   = 0;
+        this.releaseCooldownTicks = 0;
     }
 
     public boolean isBlocking() {
@@ -319,6 +364,11 @@ public class Autoblock extends Module {
 
     public boolean isPlayerBlocking() {
         return (mc.thePlayer.isUsingItem() || this.blockingState) && ItemUtil.isHoldingSword();
+    }
+
+    /** LEGITFULL hold phase - KillAura must not interrupt (skip attack, don't stopBlock) */
+    public boolean isInLegitFullHoldPhase() {
+        return getMode() == 12 && (this.blockTick == 2 || this.blockTick == 3 || this.blockTick == 4);
     }
 
     @Override

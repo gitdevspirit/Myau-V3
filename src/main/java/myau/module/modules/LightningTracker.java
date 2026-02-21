@@ -3,13 +3,19 @@ package myau.module.modules;
 import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.events.PacketEvent;
+import myau.module.BooleanSetting;
 import myau.module.Module;
+import myau.module.SliderSetting;
 import myau.util.ChatUtil;
+import myau.util.SoundUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.play.server.S2CPacketSpawnGlobalEntity;
 
 public class LightningTracker extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
+
+    public final SliderSetting  maxRange = register(new SliderSetting("Max Range", 200, 50, 500, 10));
+    public final BooleanSetting soundAlert = register(new BooleanSetting("Sound Alert", false));
 
     private String getDirection(double playerX, double playerZ, double lightningX, double lightningZ) {
         double threshold = Math.sqrt(2.0) - 1.0;
@@ -49,6 +55,7 @@ public class LightningTracker extends Module {
                 double y = (double) packet.func_149050_e() / 32.0;
                 double z = (double) packet.func_149049_f() / 32.0;
                 double distance = mc.thePlayer.getDistance(x, y, z);
+                if (distance > maxRange.getValue()) return;
                 String direction = this.getDirection(mc.thePlayer.posX, mc.thePlayer.posZ, x, z);
                 ChatUtil.sendFormatted(
                         String.format(
@@ -61,6 +68,7 @@ public class LightningTracker extends Module {
                                 direction
                         )
                 );
+                if (soundAlert.getValue()) SoundUtil.playSound("random.orb");
             }
         }
     }

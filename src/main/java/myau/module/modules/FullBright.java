@@ -3,8 +3,9 @@ package myau.module.modules;
 import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.events.TickEvent;
+import myau.module.DropdownSetting;
 import myau.module.Module;
-import myau.property.properties.ModeProperty;
+import myau.module.SliderSetting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
@@ -13,7 +14,8 @@ public class FullBright extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
     private float prevGamma = Float.NaN;
     private boolean appliedNightVision = false;
-    public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"GAMMA", "EFFECT"});
+    public final DropdownSetting mode  = register(new DropdownSetting("Mode", 0, "GAMMA", "EFFECT"));
+    public final SliderSetting  gamma  = register(new SliderSetting("Gamma", 1000, 100, 5000, 100));
 
     public FullBright() {
         super("Fullbright", true, true);
@@ -22,9 +24,9 @@ public class FullBright extends Module {
     @EventTarget
     public void onTick(TickEvent event) {
         if (this.isEnabled() && event.getType() == EventType.POST) {
-            switch (this.mode.getValue()) {
+            switch (this.mode.getIndex()) {
                 case 0:
-                    mc.gameSettings.gammaSetting = 1000.0F;
+                    mc.gameSettings.gammaSetting = (float) gamma.getValue();
                     break;
                 case 1:
                     mc.thePlayer.addPotionEffect(new PotionEffect(Potion.nightVision.id, 25940, 0));
@@ -34,7 +36,7 @@ public class FullBright extends Module {
 
     @Override
     public void onEnabled() {
-        switch (this.mode.getValue()) {
+        switch (this.mode.getIndex()) {
             case 0:
                 this.prevGamma = mc.gameSettings.gammaSetting;
                 break;

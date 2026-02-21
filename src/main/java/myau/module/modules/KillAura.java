@@ -72,8 +72,8 @@ public class KillAura extends Module {
     // Rotations
     public final DropdownSetting rotations     = new DropdownSetting("Rotations",  2, "NONE", "LEGIT", "SILENT", "LOCK_VIEW");
     public final DropdownSetting moveFix       = new DropdownSetting("Move Fix",   1, "NONE", "SILENT", "STRICT");
-    public final SliderSetting smoothing       = new SliderSetting("Smoothing",    0,   0, 100,   1);
-    public final SliderSetting angleStep       = new SliderSetting("Angle Step",  90,  30, 180,   1);
+    public final SliderSetting smoothing       = new SliderSetting("Smoothing",   85,   0, 100,   1);  // 85 = very smooth default for Lock View
+    public final SliderSetting angleStep       = new SliderSetting("Angle Step", 180,  30, 180,   1);  // 180 = no per-tick cap, smoother
 
     // Behaviour
     public final BooleanSetting throughWalls   = new BooleanSetting("Through Walls",  true);
@@ -266,6 +266,8 @@ public class KillAura extends Module {
         try {
             Autoblock autoblock = (Autoblock) Myau.moduleManager.modules.get(Autoblock.class);
             if (autoblock != null && autoblock.isEnabled() && autoblock.isPlayerBlocking()) {
+                // LEGITFULL hold phase - don't interrupt, skip attack this tick
+                if (autoblock.isInLegitFullHoldPhase()) return false;
                 autoblock.stopBlock();
                 // Defer attack to next tick to avoid PacketOrderI / RotationBreak
                 deferredAttack = true;
@@ -297,7 +299,7 @@ public class KillAura extends Module {
 
             hitRegistered = true;
             attackTimer.reset();
-            attackCooldownTicks = 2;  // Prevents Autoblock from re-blocking same/next tick (Grim)
+            attackCooldownTicks = 5;  // Prevents Autoblock from re-blocking too soon (Grim place/use PacketOrderI)
             return true;
         }
 

@@ -3,9 +3,10 @@ package myau.module.modules;
 import myau.event.EventTarget;
 import myau.events.TickEvent;
 import myau.mixin.IAccessorEntityLivingBase;
+import myau.module.BooleanSetting;
+import myau.module.DropdownSetting;
 import myau.module.Module;
 import myau.util.KeyBindUtil;
-import myau.property.properties.BooleanProperty;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.ai.attributes.AttributeModifier;
 import net.minecraft.entity.ai.attributes.IAttributeInstance;
@@ -13,7 +14,8 @@ import net.minecraft.entity.ai.attributes.IAttributeInstance;
 public class Sprint extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
     private boolean wasSprinting = false;
-    public final BooleanProperty foxFix = new BooleanProperty("fov-fix", true);
+    public final DropdownSetting mode   = register(new DropdownSetting("Mode", 0, "RAGE", "LEGIT", "OMNI"));
+    public final BooleanSetting foxFix  = register(new BooleanSetting("FOV Fix", true));
 
     public Sprint() {
         super("Sprint", true, true);
@@ -37,10 +39,16 @@ public class Sprint extends Module {
         if (this.isEnabled()) {
             switch (event.getType()) {
                 case PRE:
-                    KeyBindUtil.setKeyBindState(mc.gameSettings.keyBindSprint.getKeyCode(), true);
+                    boolean shouldSprint = mode.getIndex() == 0  // RAGE
+                        || (mode.getIndex() == 1 && (mc.thePlayer.moveForward > 0 || mc.thePlayer.moveStrafing != 0))  // LEGIT
+                        || mode.getIndex() == 2;  // OMNI
+                    if (shouldSprint) KeyBindUtil.setKeyBindState(mc.gameSettings.keyBindSprint.getKeyCode(), true);
                     break;
                 case POST:
                     this.wasSprinting = mc.thePlayer.isSprinting();
+                    break;
+                default:
+                    break;
             }
         }
     }

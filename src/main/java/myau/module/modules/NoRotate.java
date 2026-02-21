@@ -4,6 +4,7 @@ import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.events.LoadWorldEvent;
 import myau.events.PacketEvent;
+import myau.module.DropdownSetting;
 import myau.module.Module;
 import myau.util.PacketUtil;
 import myau.util.RandomUtil;
@@ -17,6 +18,8 @@ import net.minecraft.network.play.server.S08PacketPlayerPosLook.EnumFlags;
 public class NoRotate extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
     private boolean reset = false;
+
+    public final DropdownSetting mode = register(new DropdownSetting("Mode", 0, "IGNORE", "SMOOTH", "RESET_BEDWARS"));
 
     public NoRotate() {
         super("NoRotate", false);

@@ -130,6 +130,7 @@ public class ModulePanel {
             // ----------------------------------------------------------------
             if (expandedModule == module) {
                 for (Setting setting : module.getSettings()) {
+                    if (!setting.isVisible()) continue;
 
                     if (setting instanceof SliderSetting) {
                         SliderSetting slider = (SliderSetting) setting;
@@ -308,6 +309,7 @@ public class ModulePanel {
 
             if (expandedModule == module) {
                 for (Setting setting : module.getSettings()) {
+                    if (!setting.isVisible()) continue;
 
                     if (setting instanceof SliderSetting) {
                         SliderSetting slider = (SliderSetting) setting;
@@ -407,6 +409,7 @@ public class ModulePanel {
     private int getSettingsHeight(Module module) {
         int h = 0;
         for (Setting setting : module.getSettings()) {
+            if (!setting.isVisible()) continue;
             if (setting instanceof SliderSetting)        h += 30;
             else if (setting instanceof DropdownSetting) h += 17;
             else if (setting instanceof BooleanSetting)  h += 17;

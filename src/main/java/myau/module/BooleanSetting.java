@@ -1,10 +1,17 @@
 package myau.module;
 
+import java.util.function.BooleanSupplier;
+
 public class BooleanSetting extends Setting {
     private boolean value;
 
     public BooleanSetting(String name, boolean defaultValue) {
         super(name);
+        this.value = defaultValue;
+    }
+
+    public BooleanSetting(String name, boolean defaultValue, BooleanSupplier visibility) {
+        super(name, visibility);
         this.value = defaultValue;
     }
 

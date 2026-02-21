@@ -32,6 +32,10 @@ public class TargetStrafe extends Module {
     public final ModeProperty showTarget = new ModeProperty("show-target", 1, new String[]{"NONE", "DEFAULT", "HUD"});
 
     private boolean canStrafe() {
+        // Disable when Autoblock is on - rotation+movement+attack combo triggers Grim PacketOrderI
+        Autoblock autoblock = (Autoblock) Myau.moduleManager.modules.get(Autoblock.class);
+        if (autoblock != null && autoblock.isEnabled()) return false;
+
         if (this.speedOnly.getValue()) {
             Speed speed = (Speed) Myau.moduleManager.modules.get(Speed.class);
             Fly fly = (Fly) Myau.moduleManager.modules.get(Fly.class);

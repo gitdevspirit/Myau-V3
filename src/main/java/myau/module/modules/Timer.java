@@ -5,14 +5,17 @@ import myau.event.types.EventType;
 import myau.event.types.Priority;
 import myau.events.UpdateEvent;
 import myau.mixin.IAccessorMinecraft;
+import myau.module.DropdownSetting;
 import myau.module.Module;
-import myau.property.properties.FloatProperty;
+import myau.module.SliderSetting;
 import net.minecraft.client.Minecraft;
 
 public class Timer extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
 
-    public final FloatProperty speed = new FloatProperty("speed", 1.0F, 0.01F, 10.0F);
+    public final SliderSetting   speed  = register(new SliderSetting("Speed", 1.0, 0.1, 10.0, 0.1));
+    public final DropdownSetting mode   = register(new DropdownSetting("Mode", 0, "CONSTANT", "VARIABLE"));
+    public final SliderSetting   maxSpeed = register(new SliderSetting("Max (Variable)", 2.0, 1.0, 5.0, 0.1));
 
     public Timer() {
         super("Timer", false);
@@ -34,7 +37,10 @@ public class Timer extends Module {
 
         net.minecraft.util.Timer timer = ((IAccessorMinecraft) mc).getTimer();
         if (timer != null) {
-            timer.timerSpeed = this.speed.getValue();
+            double spd = mode.getIndex() == 1
+                ? speed.getValue() + (maxSpeed.getValue() - speed.getValue()) * Math.random()
+                : speed.getValue();
+            timer.timerSpeed = (float) spd;
         }
     }
 

@@ -5,9 +5,10 @@ import myau.event.types.EventType;
 import myau.events.PickEvent;
 import myau.events.RaytraceEvent;
 import myau.events.TickEvent;
+import myau.module.DropdownSetting;
 import myau.module.Module;
-import myau.property.properties.FloatProperty;
-import myau.property.properties.PercentProperty;
+import myau.module.SliderSetting;
+import net.minecraft.client.Minecraft;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -18,31 +19,41 @@ public class Reach extends Module {
     private static final DecimalFormat df = new DecimalFormat("0.0#", new DecimalFormatSymbols(Locale.US));
     private final Random theRandom = new Random();
     private boolean expanding = true;
-    public final FloatProperty range = new FloatProperty("range", 3.1F, 3.0F, 6.0F);
-    public final PercentProperty chance = new PercentProperty("chance", 100);
+    public final SliderSetting   range  = register(new SliderSetting("Range", 3.1, 3.0, 6.0, 0.1));
+    public final SliderSetting   chance = register(new SliderSetting("Chance %", 100, 1, 100, 1));
+    public final DropdownSetting mode   = register(new DropdownSetting("Mode", 0, "CONSTANT", "RANDOM", "CHANCE_BASED"));
 
     public Reach() {
         super("Reach", false);
     }
 
+    private boolean shouldExpand() {
+        switch (mode.getIndex()) {
+            case 0: return true;
+            case 1: return theRandom.nextBoolean();
+            case 2: return theRandom.nextDouble() <= chance.getValue() / 100.0;
+            default: return true;
+        }
+    }
+
     @EventTarget
     public void onPick(PickEvent event) {
         if (this.isEnabled() && this.expanding) {
-            event.setRange(this.range.getValue().doubleValue());
+            event.setRange(this.range.getValue());
         }
     }
 
     @EventTarget
     public void onRaytrace(RaytraceEvent event) {
         if (this.isEnabled() && this.expanding) {
-            event.setRange(Math.max(event.getRange(), this.range.getValue().doubleValue() + 0.5));
+            event.setRange(Math.max(event.getRange(), this.range.getValue() + 0.5));
         }
     }
 
     @EventTarget
     public void onTick(TickEvent event) {
         if (this.isEnabled() && event.getType() == EventType.PRE) {
-            this.expanding = this.theRandom.nextDouble() <= (double) this.chance.getValue() / 100.0;
+            this.expanding = shouldExpand();
         }
     }
 
