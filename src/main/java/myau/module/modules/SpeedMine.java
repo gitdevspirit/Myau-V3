@@ -5,15 +5,15 @@ import myau.event.types.EventType;
 import myau.events.TickEvent;
 import myau.mixin.IAccessorPlayerControllerMP;
 import myau.module.Module;
-import myau.property.properties.IntProperty;
-import myau.property.properties.PercentProperty;
+import myau.module.SliderSetting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.MovingObjectPosition.MovingObjectType;
 
 public class SpeedMine extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
-    public final PercentProperty speed = new PercentProperty("speed", 15);
-    public final IntProperty delay = new IntProperty("delay", 0, 0, 4);
+
+    public final SliderSetting speed = register(new SliderSetting("Speed %", 15, 0, 100, 1));
+    public final SliderSetting delay = register(new SliderSetting("Delay",   0,  0, 4,   1));
 
     public SpeedMine() {
         super("SpeedMine", false);
@@ -21,25 +21,22 @@ public class SpeedMine extends Module {
 
     @EventTarget
     public void onTick(TickEvent event) {
-        if (this.isEnabled() && event.getType() == EventType.PRE) {
-            if (!mc.playerController.isInCreativeMode()) {
-                if (mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectType.BLOCK) {
-                    ((IAccessorPlayerControllerMP) mc.playerController)
-                            .setBlockHitDelay(Math.min(((IAccessorPlayerControllerMP) mc.playerController).getBlockHitDelay(), this.delay.getValue() + 1));
-                    if (((IAccessorPlayerControllerMP) mc.playerController).getIsHittingBlock()) {
-                        float curBlockDamageMP = ((IAccessorPlayerControllerMP) mc.playerController).getCurBlockDamageMP();
-                        float damage = 0.3F * (this.speed.getValue().floatValue() / 100.0F);
-                        if (curBlockDamageMP < damage) {
-                            ((IAccessorPlayerControllerMP) mc.playerController).setCurBlockDamageMP(damage);
-                        }
-                    }
-                }
+        if (!isEnabled() || event.getType() != EventType.PRE) return;
+        if (mc.playerController.isInCreativeMode()) return;
+        if (mc.objectMouseOver == null || mc.objectMouseOver.typeOfHit != MovingObjectType.BLOCK) return;
+
+        IAccessorPlayerControllerMP ctrl = (IAccessorPlayerControllerMP) mc.playerController;
+        ctrl.setBlockHitDelay(Math.min(ctrl.getBlockHitDelay(), (int) delay.getValue() + 1));
+        if (ctrl.getIsHittingBlock()) {
+            float damage = 0.3F * ((float) speed.getValue() / 100.0F);
+            if (ctrl.getCurBlockDamageMP() < damage) {
+                ctrl.setCurBlockDamageMP(damage);
             }
         }
     }
 
     @Override
     public String[] getSuffix() {
-        return new String[]{String.format("%d%%", this.speed.getValue())};
+        return new String[]{String.format("%d%%", (int) speed.getValue())};
     }
 }

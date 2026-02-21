@@ -1,46 +1,27 @@
 package myau.module.modules;
 
+import myau.module.BooleanSetting;
 import myau.module.Module;
-import myau.property.properties.BooleanProperty;
-import myau.property.properties.FloatProperty;
-import myau.property.properties.IntProperty;
+import myau.module.SliderSetting;
 
 import java.awt.Color;
 
 public class HUD extends Module {
 
-    // sound toggle used in Module#toggle()
-    public final BooleanProperty toggleSound =
-            new BooleanProperty("ToggleSound", true);
-
-    // used in ModuleManager when deciding to show chat alerts
-    public final BooleanProperty toggleAlerts =
-            new BooleanProperty("ToggleAlerts", true);
-
-    // used by Radar, Tracers, Scaffold, BedNuker
-    public final FloatProperty scale =
-            new FloatProperty("Scale", 1.0f, 0.5f, 3.0f);
-
-    // used by Radar / BedNuker / Scaffold for text shadow
-    public final BooleanProperty shadow =
-            new BooleanProperty("Shadow", true);
-
-    // RGB used by ArraylistHUD / HUD color
-    public final IntProperty red =
-            new IntProperty("Red", 85, 0, 255);
-    public final IntProperty green =
-            new IntProperty("Green", 170, 0, 255);
-    public final IntProperty blue =
-            new IntProperty("Blue", 255, 0, 255);
+    public final BooleanSetting toggleSound  = register(new BooleanSetting("Toggle Sound",  true));
+    public final BooleanSetting toggleAlerts = register(new BooleanSetting("Toggle Alerts", true));
+    public final SliderSetting  scale        = register(new SliderSetting("Scale",  1.0, 0.5, 3.0, 0.1));
+    public final BooleanSetting shadow       = register(new BooleanSetting("Shadow", true));
+    public final SliderSetting  red          = register(new SliderSetting("Red",   85,  0, 255, 1));
+    public final SliderSetting  green        = register(new SliderSetting("Green", 170, 0, 255, 1));
+    public final SliderSetting  blue         = register(new SliderSetting("Blue",  255, 0, 255, 1));
 
     public HUD() {
-        // your Module constructor is (String name, boolean enabled[, boolean hidden])
-        // there is NO Category in Module, so we just pass a boolean
         super("HUD", true);
     }
 
     public Color getColor(long time) {
-        return new Color(red.getValue(), green.getValue(), blue.getValue());
+        return new Color((int) red.getValue(), (int) green.getValue(), (int) blue.getValue());
     }
 
     public Color getColor(long time, float offset) {

@@ -7,13 +7,14 @@ import myau.event.types.EventType;
 import myau.event.types.Priority;
 import myau.events.LoadWorldEvent;
 import myau.events.TickEvent;
+import myau.module.DropdownSetting;
 import myau.module.Module;
-import myau.property.properties.IntProperty;
-import myau.property.properties.ModeProperty;
+import myau.module.SliderSetting;
 
 public class Blink extends Module {
-    public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"DEFAULT", "PULSE"});
-    public final IntProperty ticks = new IntProperty("ticks", 20, 0, 1200);
+
+    public final DropdownSetting mode  = register(new DropdownSetting("Mode",  0, "DEFAULT", "PULSE"));
+    public final SliderSetting   ticks = register(new SliderSetting("Ticks", 20, 0, 1200, 1));
 
     public Blink() {
         super("Blink", false);
@@ -21,27 +22,27 @@ public class Blink extends Module {
 
     @EventTarget(Priority.LOWEST)
     public void onTick(TickEvent event) {
-        if (this.isEnabled() && event.getType() == EventType.POST) {
-            if (!Myau.blinkManager.getBlinkingModule().equals(BlinkModules.BLINK)) {
-                this.setEnabled(false);
-            } else {
-                if (this.ticks.getValue() > 0 && Myau.blinkManager.countMovement() > (long) this.ticks.getValue()) {
-                    switch (this.mode.getValue()) {
-                        case 0:
-                            this.setEnabled(false);
-                            break;
-                        case 1:
-                            Myau.blinkManager.setBlinkState(false, BlinkModules.BLINK);
-                            Myau.blinkManager.setBlinkState(true, BlinkModules.BLINK);
-                    }
-                }
+        if (!isEnabled() || event.getType() != EventType.POST) return;
+        if (!Myau.blinkManager.getBlinkingModule().equals(BlinkModules.BLINK)) {
+            setEnabled(false);
+            return;
+        }
+        if (ticks.getValue() > 0 && Myau.blinkManager.countMovement() > (long) ticks.getValue()) {
+            switch (mode.getIndex()) {
+                case 0:
+                    setEnabled(false);
+                    break;
+                case 1:
+                    Myau.blinkManager.setBlinkState(false, BlinkModules.BLINK);
+                    Myau.blinkManager.setBlinkState(true, BlinkModules.BLINK);
+                    break;
             }
         }
     }
 
     @EventTarget
     public void onWorldLoad(LoadWorldEvent event) {
-        this.setEnabled(false);
+        setEnabled(false);
     }
 
     @Override

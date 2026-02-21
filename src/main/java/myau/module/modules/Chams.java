@@ -2,9 +2,9 @@ package myau.module.modules;
 
 import myau.event.EventTarget;
 import myau.events.RenderLivingEvent;
+import myau.module.BooleanSetting;
 import myau.module.Module;
 import myau.util.TeamUtil;
-import myau.property.properties.BooleanProperty;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.boss.EntityDragon;
@@ -19,69 +19,60 @@ import org.lwjgl.opengl.GL11;
 
 public class Chams extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
-    public final BooleanProperty players = new BooleanProperty("players", true);
-    public final BooleanProperty friends = new BooleanProperty("friends", true);
-    public final BooleanProperty enemiess = new BooleanProperty("enemies", true);
-    public final BooleanProperty bosses = new BooleanProperty("bosses", false);
-    public final BooleanProperty mobs = new BooleanProperty("mobs", false);
-    public final BooleanProperty creepers = new BooleanProperty("creepers", false);
-    public final BooleanProperty enderman = new BooleanProperty("endermen", false);
-    public final BooleanProperty blaze = new BooleanProperty("blazes", false);
-    public final BooleanProperty animals = new BooleanProperty("animals", false);
-    public final BooleanProperty self = new BooleanProperty("self", false);
-    public final BooleanProperty bots = new BooleanProperty("bots", false);
 
-    private boolean shouldRenderChams(EntityLivingBase entityLivingBase) {
-        if (entityLivingBase.deathTime > 0) {
-            return false;
-        } else if (mc.getRenderViewEntity().getDistanceToEntity(entityLivingBase) > 512.0F) {
-            return false;
-        } else if (entityLivingBase instanceof EntityPlayer) {
-            if (entityLivingBase != mc.thePlayer && entityLivingBase != mc.getRenderViewEntity()) {
-                if (TeamUtil.isBot((EntityPlayer) entityLivingBase)) {
-                    return this.bots.getValue();
-                } else if (TeamUtil.isFriend((EntityPlayer) entityLivingBase)) {
-                    return this.friends.getValue();
-                } else {
-                    return TeamUtil.isTarget((EntityPlayer) entityLivingBase) ? this.enemiess.getValue() : this.players.getValue();
-                }
-            } else {
-                return this.self.getValue() && mc.gameSettings.thirdPersonView != 0;
-            }
-        } else if (entityLivingBase instanceof EntityDragon || entityLivingBase instanceof EntityWither) {
-            return !entityLivingBase.isInvisible() && this.bosses.getValue();
-        } else if (!(entityLivingBase instanceof EntityMob) && !(entityLivingBase instanceof EntitySlime)) {
-            return (entityLivingBase instanceof EntityAnimal
-                    || entityLivingBase instanceof EntityBat
-                    || entityLivingBase instanceof EntitySquid
-                    || entityLivingBase instanceof EntityVillager) && this.animals.getValue();
-        } else if (entityLivingBase instanceof EntityCreeper) {
-            return this.creepers.getValue();
-        } else if (entityLivingBase instanceof EntityEnderman) {
-            return this.enderman.getValue();
-        } else {
-            return entityLivingBase instanceof EntityBlaze ? this.blaze.getValue() : this.mobs.getValue();
-        }
-    }
+    public final BooleanSetting players  = register(new BooleanSetting("Players",   true));
+    public final BooleanSetting friends  = register(new BooleanSetting("Friends",   true));
+    public final BooleanSetting enemiess = register(new BooleanSetting("Enemies",   true));
+    public final BooleanSetting bosses   = register(new BooleanSetting("Bosses",    false));
+    public final BooleanSetting mobs     = register(new BooleanSetting("Mobs",      false));
+    public final BooleanSetting creepers = register(new BooleanSetting("Creepers",  false));
+    public final BooleanSetting enderman = register(new BooleanSetting("Endermen",  false));
+    public final BooleanSetting blaze    = register(new BooleanSetting("Blazes",    false));
+    public final BooleanSetting animals  = register(new BooleanSetting("Animals",   false));
+    public final BooleanSetting self     = register(new BooleanSetting("Self",      false));
+    public final BooleanSetting bots     = register(new BooleanSetting("Bots",      false));
 
     public Chams() {
         super("Chams", false);
     }
 
+    private boolean shouldRenderChams(EntityLivingBase entity) {
+        if (entity.deathTime > 0) return false;
+        if (mc.getRenderViewEntity().getDistanceToEntity(entity) > 512.0F) return false;
+        if (entity instanceof EntityPlayer) {
+            if (entity == mc.thePlayer || entity == mc.getRenderViewEntity()) {
+                return self.getValue() && mc.gameSettings.thirdPersonView != 0;
+            }
+            if (TeamUtil.isBot((EntityPlayer) entity))    return bots.getValue();
+            if (TeamUtil.isFriend((EntityPlayer) entity)) return friends.getValue();
+            return TeamUtil.isTarget((EntityPlayer) entity) ? enemiess.getValue() : players.getValue();
+        }
+        if (entity instanceof EntityDragon || entity instanceof EntityWither)
+            return !entity.isInvisible() && bosses.getValue();
+        if (entity instanceof EntityCreeper) return creepers.getValue();
+        if (entity instanceof EntityEnderman) return enderman.getValue();
+        if (entity instanceof EntityBlaze) return blaze.getValue();
+        if (entity instanceof EntityMob || entity instanceof EntitySlime) return mobs.getValue();
+        if (entity instanceof EntityAnimal
+                || entity instanceof EntityBat
+                || entity instanceof EntitySquid
+                || entity instanceof EntityVillager)
+            return animals.getValue();
+        return false;
+    }
+
     @EventTarget
     public void onRenderLiving(RenderLivingEvent event) {
-        if (this.isEnabled()) {
-            if (this.shouldRenderChams(event.getEntity())) {
-                switch (event.getType()) {
-                    case PRE:
-                        GL11.glEnable(32823);
-                        GL11.glPolygonOffset(1.0F, -2500000.0F);
-                        break;
-                    case POST:
-                        GL11.glPolygonOffset(1.0F, 2500000.0F);
-                        GL11.glDisable(32823);
-                }
-            }
+        if (!isEnabled() || !shouldRenderChams(event.getEntity())) return;
+        switch (event.getType()) {
+            case PRE:
+                GL11.glEnable(32823);
+                GL11.glPolygonOffset(1.0F, -2500000.0F);
+                break;
+            case POST:
+                GL11.glPolygonOffset(1.0F, 2500000.0F);
+                GL11.glDisable(32823);
+                break;
         }
     }
 }

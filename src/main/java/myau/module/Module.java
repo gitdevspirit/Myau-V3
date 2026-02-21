@@ -20,10 +20,10 @@ public abstract class Module {
       this(name, enabled, false);
    }
 
-   public Module(String name, boolean enabled, boolean hidden) {
+   public Module(String name, boolean enabled2, boolean hidden) {
       this.settings = new ArrayList();
       this.name = name;
-      this.enabled = this.defaultEnabled = enabled;
+      this.enabled = this.defaultEnabled = enabled2;
       this.key = this.defaultKey = 0;
       this.hidden = this.defaultHidden = hidden;
    }

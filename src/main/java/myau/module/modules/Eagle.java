@@ -7,10 +7,10 @@ import myau.module.BooleanSetting;
 import myau.module.Module;
 import myau.module.SliderSetting;
 import myau.util.ItemUtil;
-import net.minecraft.client.Minecraft;
-import net.minecraft.util.BlockPos;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockAir;
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.BlockPos;
 
 public class Eagle extends Module {
 
@@ -20,8 +20,6 @@ public class Eagle extends Module {
     public final BooleanSetting blocksOnly  = new BooleanSetting("Blocks Only", true);
     public final BooleanSetting pitchBypass = new BooleanSetting("Pitch Bypass", true);
 
-    private boolean sneakedLastTick = false;
-
     public Eagle() {
         super("Eagle", false);
         register(edgeOffset);
@@ -30,16 +28,16 @@ public class Eagle extends Module {
     }
 
     private boolean isNearEdge() {
-        float offset = (float) edgeOffset.getValue();
-        if (offset <= 0f)                                         return false;
-        if (!mc.thePlayer.onGround)                               return false;
-        if (blocksOnly.getValue() && !ItemUtil.isHoldingBlock())  return false;
+        if (!mc.thePlayer.onGround)                              return false;
+        if (blocksOnly.getValue() && !ItemUtil.isHoldingBlock()) return false;
         if (pitchBypass.getValue() && mc.thePlayer.rotationPitch > 60.0f) return false;
 
-        double px  = mc.thePlayer.posX;
-        double py  = mc.thePlayer.posY;
-        double pz  = mc.thePlayer.posZ;
+        float  offset = (float) edgeOffset.getValue();
+        double px     = mc.thePlayer.posX;
+        double py     = mc.thePlayer.posY;
+        double pz     = mc.thePlayer.posZ;
 
+        // Predict next position based on movement input
         double mx  = mc.thePlayer.motionX;
         double mz  = mc.thePlayer.motionZ;
         float  fwd = mc.thePlayer.movementInput.moveForward;
@@ -72,22 +70,10 @@ public class Eagle extends Module {
     @EventTarget(Priority.LOWEST)
     public void onMoveInput(MoveInputEvent event) {
         if (!isEnabled() || mc.currentScreen != null) return;
-
-        if (sneakedLastTick) {
-            sneakedLastTick = false;
-            mc.thePlayer.movementInput.sneak = false;
-            return;
-        }
-
+        // Continuously hold sneak while near an edge — same pattern as Scaffold's safe-walk
         if (isNearEdge()) {
             mc.thePlayer.movementInput.sneak = true;
-            sneakedLastTick = true;
         }
-    }
-
-    @Override
-    public void onDisabled() {
-        sneakedLastTick = false;
     }
 
     @Override

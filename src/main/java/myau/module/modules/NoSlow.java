@@ -1,20 +1,16 @@
 package myau.module.modules;
 
 import myau.Myau;
-import myau.enums.FloatModules;
 import myau.event.EventTarget;
-import myau.event.types.Priority;
-import myau.events.LivingUpdateEvent;
-import myau.events.PlayerUpdateEvent;
 import myau.events.RightClickMouseEvent;
+import myau.module.BooleanSetting;
+import myau.module.DropdownSetting;
 import myau.module.Module;
+import myau.module.SliderSetting;
 import myau.util.BlockUtil;
 import myau.util.ItemUtil;
 import myau.util.PlayerUtil;
 import myau.util.TeamUtil;
-import myau.property.properties.BooleanProperty;
-import myau.property.properties.PercentProperty;
-import myau.property.properties.ModeProperty;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
@@ -23,17 +19,18 @@ import net.minecraft.util.BlockPos;
 
 public class NoSlow extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
-    public final ModeProperty swordMode = new ModeProperty("sword-mode", 1, new String[]{"NONE", "VANILLA", "GRIM"});
-    public final PercentProperty swordMotion = new PercentProperty("sword-motion", 100, () -> this.swordMode.getValue() == 1);
-    public final BooleanProperty swordSprint = new BooleanProperty("sword-sprint", true, () -> this.swordMode.getValue() != 0);
-    public final BooleanProperty killauraonly = new BooleanProperty("killaura-only", false, () -> this.swordMode.getValue() != 0);
-    public final ModeProperty foodMode = new ModeProperty("food-mode", 0, new String[]{"NONE", "VANILLA", "GRIM"});
-    public final PercentProperty foodMotion = new PercentProperty("food-motion", 100, () -> this.foodMode.getValue() == 1);
-    public final BooleanProperty foodSprint = new BooleanProperty("food-sprint", true, () -> this.foodMode.getValue() != 0);
-    public final ModeProperty bowMode = new ModeProperty("bow-mode", 0, new String[]{"NONE", "VANILLA", "GRIM"});
-    public final PercentProperty bowMotion = new PercentProperty("bow-motion", 100, () -> this.bowMode.getValue() == 1);
-    public final BooleanProperty bowSprint = new BooleanProperty("bow-sprint", true, () -> this.bowMode.getValue() != 0);
     private int count;
+
+    public final DropdownSetting swordMode    = register(new DropdownSetting("Sword Mode",   1, "NONE", "VANILLA", "GRIM"));
+    public final SliderSetting   swordMotion  = register(new SliderSetting("Sword Motion %", 100, 0, 100, 1));
+    public final BooleanSetting  swordSprint  = register(new BooleanSetting("Sword Sprint",  true));
+    public final BooleanSetting  killauraonly = register(new BooleanSetting("KillAura Only",  false));
+    public final DropdownSetting foodMode     = register(new DropdownSetting("Food Mode",    0, "NONE", "VANILLA", "GRIM"));
+    public final SliderSetting   foodMotion   = register(new SliderSetting("Food Motion %",  100, 0, 100, 1));
+    public final BooleanSetting  foodSprint   = register(new BooleanSetting("Food Sprint",   true));
+    public final DropdownSetting bowMode      = register(new DropdownSetting("Bow Mode",     0, "NONE", "VANILLA", "GRIM"));
+    public final SliderSetting   bowMotion    = register(new SliderSetting("Bow Motion %",   100, 0, 100, 1));
+    public final BooleanSetting  bowSprint    = register(new BooleanSetting("Bow Sprint",    true));
 
     public NoSlow() {
         super("NoSlow", false);
@@ -42,84 +39,53 @@ public class NoSlow extends Module {
     public boolean isSwordActive() {
         KillAura killAura = (KillAura) Myau.moduleManager.modules.get(KillAura.class);
         if (killauraonly.getValue()) {
-            if (!killAura.isEnabled()) return false;
-            if (killAura.getTarget() == null) return false;
+            if (!killAura.isEnabled() || killAura.getTarget() == null) return false;
         }
-        return this.swordMode.getValue() != 0 && ItemUtil.isHoldingSword();
+        return swordMode.getIndex() != 0 && ItemUtil.isHoldingSword();
     }
 
-    public boolean isFoodActive() {
-        return this.foodMode.getValue() != 0 && ItemUtil.isEating();
-    }
-
-    public boolean isBowActive() {
-        return this.bowMode.getValue() != 0 && ItemUtil.isUsingBow();
-    }
+    public boolean isFoodActive() { return foodMode.getIndex() != 0 && ItemUtil.isEating(); }
+    public boolean isBowActive()  { return bowMode.getIndex() != 0 && ItemUtil.isUsingBow(); }
 
     public boolean isAnyActive() {
-        return mc.thePlayer.isUsingItem() && (this.isSwordActive() || this.isFoodActive() || this.isBowActive());
+        return mc.thePlayer.isUsingItem() && (isSwordActive() || isFoodActive() || isBowActive());
     }
 
     public boolean canSprint() {
-        return (this.isSwordActive() && this.swordSprint.getValue())
-                || (this.isFoodActive() && this.foodSprint.getValue())
-                || (this.isBowActive() && this.bowSprint.getValue());
+        return (isSwordActive() && swordSprint.getValue())
+                || (isFoodActive() && foodSprint.getValue())
+                || (isBowActive() && bowSprint.getValue());
     }
 
     public int getMotionMultiplier() {
         count++;
         if (ItemUtil.isHoldingSword()) {
-            if (swordMode.getValue() == 2) {
-                if (count % 2 == 0) {
-                    return 100;
-                } else {
-                    return 20;
-                }
-            }
-            return this.swordMotion.getValue();
+            if (swordMode.getIndex() == 2) return count % 2 == 0 ? 100 : 20;
+            return (int) swordMotion.getValue();
         } else if (ItemUtil.isEating()) {
-            if (foodMode.getValue() == 2) {
-                if (count % 2 == 0) {
-                    return 100;
-                } else {
-                    return 20;
-                }
-            }
-            return this.foodMotion.getValue();
+            if (foodMode.getIndex() == 2) return count % 2 == 0 ? 100 : 20;
+            return (int) foodMotion.getValue();
         } else if (ItemUtil.isUsingBow()) {
-            if (bowMode.getValue() == 2) {
-                if (count % 2 == 0) {
-                    return 100;
-                } else {
-                    return 20;
-                }
-            }
-            return this.bowMotion.getValue();
+            if (bowMode.getIndex() == 2) return count % 2 == 0 ? 100 : 20;
+            return (int) bowMotion.getValue();
         }
         return 100;
     }
 
     @EventTarget
     public void onRightClick(RightClickMouseEvent event) {
-        if (this.isEnabled()) {
-            if (mc.objectMouseOver != null) {
-                switch (mc.objectMouseOver.typeOfHit) {
-                    case BLOCK:
-                        BlockPos blockPos = mc.objectMouseOver.getBlockPos();
-                        if (BlockUtil.isInteractable(blockPos) && !PlayerUtil.isSneaking()) {
-                            return;
-                        }
-                        break;
-                    case ENTITY:
-                        Entity entityHit = mc.objectMouseOver.entityHit;
-                        if (entityHit instanceof EntityVillager) {
-                            return;
-                        }
-                        if (entityHit instanceof EntityLivingBase && TeamUtil.isShop((EntityLivingBase) entityHit)) {
-                            return;
-                        }
-                        break;
-                }
+        if (!isEnabled()) return;
+        if (mc.objectMouseOver != null) {
+            switch (mc.objectMouseOver.typeOfHit) {
+                case BLOCK:
+                    BlockPos bp = mc.objectMouseOver.getBlockPos();
+                    if (BlockUtil.isInteractable(bp) && !PlayerUtil.isSneaking()) return;
+                    break;
+                case ENTITY:
+                    Entity eh = mc.objectMouseOver.entityHit;
+                    if (eh instanceof EntityVillager) return;
+                    if (eh instanceof EntityLivingBase && TeamUtil.isShop((EntityLivingBase) eh)) return;
+                    break;
             }
         }
     }
